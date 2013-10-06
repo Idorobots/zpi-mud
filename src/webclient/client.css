@@ -1,0 +1,13 @@
+body {
+    margin:100px 0px;
+    padding:0px
+}
+
+#login-box {
+    vertical-align: middle;
+    text-align: center
+}
+
+#game-box {
+    text-align: center
+}
