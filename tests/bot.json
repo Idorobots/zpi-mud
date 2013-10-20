@@ -125,6 +125,7 @@
 				    "name" : "say",
 				    "args" : [
 					{
+                        "type" : "yells",
 					    "text" : "How about no?"
 					}
 				    ]

@@ -1,7 +1,7 @@
 // @author: kajtek@idorobots.org
 
 function makeChatBox(socket, nick) {
-    var box = document.createElement("div");
+    var box = document.createElement("form");
     box.id = "chat-box";
 
     var textarea = document.createElement("textarea");
@@ -15,14 +15,23 @@ function makeChatBox(socket, nick) {
     text.type = "text";
     text.size = "90";
     text.value = "You say...";
+    var foo = function () {
+    	text.value = "";
+	text.onclick = undefined;
+	text.oninput = undefined;
+    };
+    text.onclick = foo;
+    text.oninput = foo;
     box.appendChild(text);
-
+    
     var send = document.createElement("input");
-    send.type = "button";
+    send.type = "submit";
     send.value = "Send!";
-    send.onclick = function () {
+
+    box.onsubmit = function () {
 	dispatch(socket, text.value);
 	text.value = "";
+	return false;
     };
     box.appendChild(send);
     box.appendChild(document.createElement("br"))
@@ -84,6 +93,7 @@ function sendAction(socket, action, args) {
 function sendMsg(socket, text) {
     console.log("Sending a message!");
     socket.emit("say", {
+    "type" : "says",
 	"text" : text
     });
 }
@@ -92,7 +102,9 @@ function receiveMsg(nick, action, text) {
     console.log("Received a message!");
     var chatBox = document.getElementById("chat-box");
     if(chatBox !== null) {
-	chatBox.children[0].innerHTML += nick + " " + action + ": " + text + "\n";
+	var textarea = chatBox.children[0];
+	textarea.value += nick + " " + action + ": " + text + "\n";
+	textarea.scrollTop = textarea.scrollHeight - textarea.clientHeight;
     }
 }
 
@@ -100,7 +112,9 @@ function receiveInfo(text) {
     console.log("Received some info!");
     var chatBox = document.getElementById("chat-box");
     if(chatBox !== null) {
-	chatBox.children[0].innerHTML += "*" + text + "*\n";
+	var textarea = chatBox.children[0];
+	textarea.value += "*" + text + "*\n";
+	textarea.scrollTop = textarea.scrollHeight - textarea.clientHeight;
     }
 }
 
@@ -108,12 +122,13 @@ function init() {
     console.log("Starting the game!");
 
     var login = document.getElementById("login-box");
-    var socket = io.connect('http://localhost:8080/');
-    var nick = login.children[0].value;
+    var server = document.getElementById("server-name").value;
+    var nick = document.getElementById("login-name").value;
+    var socket = io.connect(server);
 
-    login.children[1].onclick = function () {
-	nick = login.children[0].value;
+    document.getElementById("login-button").onclick = function () {
 	console.log("Logging in as " + nick + "...");
+	nick = document.getElementById("login-name").value;
         socket.emit("authorize", { "nick" : nick });
     };
     
@@ -178,7 +193,7 @@ function init() {
 		    }
 		});
 
-		makeChatBox(socket, nick);
+		makeChatBox(socket, nick).children[2].focus();
 	    }
 	    else {
 		console.log("Not authorized!");

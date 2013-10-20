@@ -5,8 +5,13 @@
   </head>
   <body>
     <div id="login-box">
-      <input type="text" size="10" value="Nickname"/>
-      <input type="button" value="Start playing!" onclick="init();"/>
+      <input id="server-name" type="text" size="30" value="localhost:8080"/>
+      <br/>
+      <input id="login-name" type="text" size="10" value="Nickname"/>
+      <br/>
+      <input type="text" size="10" value="password"/>
+      <br/>
+      <input id="login-button" type="button" value="Start playing!" onclick="init();"/>
     </div>
     <div id="game-box"></div>
     <script src="socket.io/socket.io.js"></script>
