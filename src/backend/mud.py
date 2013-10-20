@@ -59,10 +59,11 @@ class BackendHTTPRequestHandler(BaseHTTPRequestHandler):
             nick = state["state"]["nick"]
             location = state["state"]["location"]
             text = state["trigger"]["args"][0]["text"]
+            msg_type = state["trigger"]["args"][0]["type"]
             self._publish(location, [{"action" : "reply",
                                       "args" : {"name" : "msg",
                                                 "args" : [{"nick" : nick,
-                                                           "type" : "says",
+                                                           "type" : msg_type,
                                                            "text" : text}]}}])
             self._reply(200, "")
             return
@@ -182,7 +183,7 @@ class BackendHTTPRequestHandler(BaseHTTPRequestHandler):
                   json.dumps(actions)),
         return
     
-httpd = BaseHTTPServer.HTTPServer(('127.0.0.1', 8081), BackendHTTPRequestHandler)
+httpd = BaseHTTPServer.HTTPServer(('127.0.0.1', 54321), BackendHTTPRequestHandler)
 sa = httpd.socket.getsockname()
 
 print "Serving HTTP on", sa[0], "port", sa[1], "..."
