@@ -1,0 +1,105 @@
+################################################################################
+#+TITLE: *Specyfikacja projektu MUD - Multi User Dungeon*
+#+AUTHOR: Kamil Bieszczad \\* Katarzyna Chachlowska \\* Michał Jankowski \\* Marta Połeć \\* Kajetan Rzepecki \\* Rafał Salawa \\* Anna Sotwin \\* Tomasz Szepczyński
+#+DATE: \today
+#
+#+BEGIN_OPTIONS
+#+STARTUP: content
+#+LaTeX_CLASS: article
+#+LaTeX_CLASS_OPTIONS: []
+#+LaTeX_HEADER: \usepackage[a4paper, margin=2.5cm]{geometry}
+#+LaTeX_HEADER: \usepackage[polish]{babel}
+#+LaTeX_HEADER: \usepackage{amsmath}
+#+LATEX_HEADER: \usepackage{minted}
+##+LATEX_HEADER: \usepackage[hyperref]{xcolor}
+##+LATEX_HEADER: \definecolor{link-red}{rgb}{0.4,0.15,0.15}
+##+LATEX_HEADER: \definecolor{link-blue}{rgb}{0.15,0.15,0.4}
+##+LATEX_HEADER: \hypersetup{colorlinks=true, linkcolor=link-red, urlcolor=link-blue}
+#+OPTIONS: tags:nil, todo:nil, toc:nil
+#+END_OPTIONS
+####################
+
+* Serwer gry MUD
+** Wymagania sprzętowe i software'owe
+- CPU 1 GHz,
+- 512 MB RAM,
+- 200 MB przestrzeni dyskowej,
+- połączenie z internetem
+- platforma docelowa: x86/x86\_64
+- wspierane systemy operacyjne: Debian Wheezy GNU/Linux, Windows 7/8
+
+** Technologia wykonania
+- języki implementacji: Erlang, Python
+- Hive [fn:: https://github.com/brainly/hive]
+- Redis [fn:: https://github.com/antirez/redis]
+- Socket.IO [fn:: https://github.com/LearnBoost/socket.io]
+
+** Inne cechy
+- Konfiguracja za pomocą pliku konfiguracyjnego Hive,
+- Wykorzystanie bazy danych Redis do przechowywania danych graczy,
+- Autoryzacja za pomocą pseudonimu i hash'owanego hasła gracza,
+- Hasła generowane przy pierwszym połączeniu gracza do świata gry,
+- Komunikacja za pośrednictwem protokołu Socket.IO (i subprotokołów XHR-polling oraz WebSocket),
+- Pakiet instalacyjny dla dystrybucji Debian Wheezy GNU/Linux,
+- 'Paczka' instalacyjna dla Windows,
+- Brak obsługi protokołu telnet,
+- Brak graficznego interfejsu użytkownika,
+
+* Klient web'owy
+** Wymagania sprzętowe i software'owe
+- CPU 1 GHz,
+- 512 MB RAM,
+- 200 MB przestrzeni dyskowej,
+- połączenie z internetem
+- wspierane przeglądarki internetowe: Google Chrome, Internet Explorer 8+, Mozilla Firefox
+
+** Technologia wykonania
+- języki implementacji: JavaScript, HTML, CSS
+- Socket.IO [fn:: https://github.com/LearnBoost/socket.io]
+
+** Inne cechy
+- GUI umożliwiające łatwą komunikację z serwerem gry,
+- Komunikacja za pośrednictwem protokołu Socket.IO (i subprotokołów XHR-polling oraz WebSocket),
+- Brak obsługi protokołu telnet,
+
+* Klient desktop'owy
+** Wymagania sprzętowe i software'owe
+- CPU 1 GHz,
+- 512 MB RAM,
+- 200 MB przestrzeni dyskowej,
+- połączenie z internetem
+- platforma docelowa: x86/x86\_64
+- wspierane systemy operacyjne: Debian Wheezy GNU/Linux, Windows 7/8
+
+** Technologia wykonania
+- języki implementacji: C#/Java/C++
+- WebSocket
+
+** Inne cechy
+- GUI umożliwiające łatwą komunikację z serwerem gry,
+- Komunikacja za pośrednictwem protokołu Socket.IO (subprotokół WebSocket),
+- Pakiet instalacyjny dla dystrybucji Debian Wheezy GNU/Linux,
+- 'Paczka' instalacyjna dla Windows,
+- Brak obsługi protokołu telnet,
+
+* Edytor świata
+** Wymagania sprzętowe i software'owe
+- CPU 1 GHz,
+- 512 MB RAM,
+- 200 MB przestrzeni dyskowej,
+- platforma docelowa: x86/x86\_64
+- wspierane systemy operacyjne: Debian Wheezy GNU/Linux, Windows 7/8
+
+** Technologia wykonania
+- języki implementacji: C#/Java/C++
+
+** Inne cechy
+- GUI pozwalające na łatwe tworzenie nowych elementów świata gry,
+- Pakiet instalacyjny dla dystrybucji Debian Wheezy GNU/Linux,
+- 'Paczka' instalacyjna dla Windows,
+- Brak obsługi protokołu telnet,
+
+* Świat gry
+- Przechowywany w plikach JSON.
+- Wsparcie dla akcji, przedmiotów, lokacji, NPC, etc.
+- Do projektu zostanie dołączony przykładowy świat gry prezentujący różne możliwości projektu.
