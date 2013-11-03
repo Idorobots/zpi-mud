@@ -1,0 +1,16 @@
+[
+    {
+	"nick" : "Kajtek",
+	"stats" : {
+    	    "health" : 125,
+	    "strength" : 125,
+	    "toughness" : 125
+	},
+	"inventory" : [
+	    {
+		"id" : "pala_wodza",
+		"name" : "Pała Wodza"
+	    }
+	]
+    }
+]
