@@ -15,7 +15,7 @@
     "socketio" : {
 	"heartbeat_timeout" : 30000,
 	"reconnect_timeout" : 120000,
-	"poll_timeout" : 500,
+	"poll_timeout" : 100,
 	"init_timeout" : 10000,
 	"session_timeout" : 36000000,
 	"transports" : ["websocket", "xhr-polling"]

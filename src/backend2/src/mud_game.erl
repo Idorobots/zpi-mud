@@ -5,7 +5,7 @@
 -export([authorize/1, say/1, do/1, cleanup/1]).
 
 -import(mud_utils, [hash/1, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
--import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1]).
+-import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2]).
 
 -record(state, {locations, players, passwd, items}).
 
@@ -46,7 +46,7 @@ do(Data) ->
                               state(Data)}).
 
 cleanup(Data) ->
-    gen_server:call(?MODULE, {cleanup, sid(Data), state(Data)}).
+    gen_server:cast(?MODULE, {cleanup, sid(Data), state(Data)}).
 
 %% Gen server handlers:
 handle_call({new_character, Nick, Sid}, _From, State) ->
@@ -64,7 +64,7 @@ handle_call({new_character, Nick, Sid}, _From, State) ->
                      mk_reply(<<"character_info">>, [Character])],
             {reply, {ok, Reply}, join(Nick,
                                       Sid,
-                                      Location,
+                                      LocationID,
                                       add_character(Character, Nick, Password, LocationID, State))};
 
         false ->
@@ -90,14 +90,30 @@ handle_call({log_in, Nick, Password, Sid}, _From, State) ->
                              mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>}]]),
                              mk_reply(<<"location_info">>, [Location]),
                              mk_reply(<<"character_info">>, [Character])],
-                    {reply, {ok, Reply}, join(Nick, Sid, Location, State)};
+                    {reply, {ok, Reply}, join(Nick, Sid, LocationID, State)};
 
                 _Otherwise ->
                     {reply, {ok, mk_reply(<<"authorize">>, [[{<<"permission">>, null}]])}, State}
             end
     end;
 
-handle_call({do, Action, Args, Sid, _State}, _From, State) ->
+handle_call({do, <<"examine">>, Args, Sid, _State}, _From, State) ->
+    %% TODO Call a callback with args and game state.
+    {reply, ok, State};
+
+handle_call({do, <<"move">>, Args, Sid, _State}, _From, State) ->
+    %% TODO Call a callback with args and game state.
+    {reply, ok, State};
+
+handle_call({do, <<"attack">>, Args, Sid, _State}, _From, State) ->
+    %% TODO Call a callback with args and game state.
+    {reply, ok, State};
+
+handle_call({do, <<"take">>, Args, Sid, _State}, _From, State) ->
+    %% TODO Call a callback with args and game state.
+    {reply, ok, State};
+
+handle_call({do, <<"drop">>, Args, Sid, _State}, _From, State) ->
     %% TODO Call a callback with args and game state.
     {reply, ok, State};
 
@@ -115,6 +131,11 @@ handle_cast({say, Type, Text, PlayerState}, State) ->
                                         {<<"type">>, Type},
                                         {<<"text">>, Text}]]}]),
     {noreply, State};
+
+handle_cast({cleanup, Sid, PlayerState}, State) ->
+    Nick = prop(<<"nick">>, PlayerState),
+    LocationID = prop(<<"location">>, PlayerState),
+    {noreply, leave(Nick, Sid, LocationID, State)};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -153,20 +174,38 @@ extractor(Field) ->
             {proplists:get_value(Field, JSON), JSON}
     end.
 
-join(Nick, Sid, Location, State) ->
-    %% TODO Add Nick to Location, publish player_enters event.
-    State.
+join(Nick, Sid, LocationID, State) ->
+    %% TODO Subscribe Nick to Location, publish player_enters event.
+    Location = prop(LocationID, State#state.locations),
+    Players = [Nick | prop(<<"players">>, Location)],
+    subscribe(Sid, LocationID),
+    publish(LocationID, [{<<"name">>, <<"player_enters">>},
+                         {<<"args">>, [[{<<"location">>, prop(<<"name">>, Location)},
+                                        {<<"nick">>, Nick}]]}]),
+    State#state{
+      locations = update(LocationID,
+                         update(<<"players">>, Players, Location),
+                         State#state.locations)
+     }.
 
-leave(Nick, Sid, Location, State) ->
-    %% TODO Remove Nick from Location, publish player_leaves event.
-    State.
+leave(Nick, Sid, LocationID, State) ->
+    %% TODO unsubscribe Nick from Location, publish player_leaves event.
+    Location = prop(LocationID, State#state.locations),
+    Players = prop(<<"players">>, Location) -- [Nick],
+    unsubscribe(Sid, LocationID),
+    publish(LocationID, [{<<"name">>, <<"player_leaves">>},
+                         {<<"args">>, [[{<<"location">>, prop(<<"name">>, Location)},
+                                        {<<"nick">>, Nick}]]}]),
+    State#state{
+      locations = update(LocationID,
+                         update(<<"players">>, Players, Location),
+                         State#state.locations)
+     }.
 
 add_character(Character, Nick, Password, Location, State) ->
-    Passwd = State#state.passwd,
-    Players = State#state.players,
-    State#state{players = [{Nick, Character} | Players],
-                passwd = [{Nick, [{<<"password">>, hash(Password)},
-                                  {<<"location">>, Location}]} | Passwd]}.
+    State#state{players = update(Nick, Character, State#state.players),
+                passwd = update(Nick, [{<<"password">>, hash(Password)},
+                                       {<<"location">>, Location}], State#state.passwd)}.
 
 new_character(Nick) ->
     [{<<"nick">>, Nick},
