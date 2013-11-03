@@ -2,8 +2,12 @@
 -behaviour(gen_server).
 
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([authorize/1, say/1, do/1, cleanup/1]).
 
--record(state, {locations, players, passwords, items}).
+-import(mud_utils, [hash/1, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
+-import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1]).
+
+-record(state, {locations, players, passwd, items}).
 
 %% This is a tiny wrapper that makes restarts of various Hive HTTP servers predictable and well-behaved.
 %% Gen server callbacks:
@@ -18,11 +22,99 @@ terminate(_Reason, _State) ->
     ok.
 
 %% Game API:
+authorize(Data) ->
+    Trigger = trigger(Data),
+    [Args] = prop(<<"args">>, Trigger),
+    case prop(<<"password">>, Args) of
+        null     -> gen_server:call(?MODULE, {new_character, prop(<<"nick">>, Args), sid(Data)});
+        Password -> gen_server:call(?MODULE, {log_in, prop(<<"nick">>, Args), Password, sid(Data)})
+    end.
 
+say(Data) ->
+    Trigger = trigger(Data),
+    [Args] = prop(<<"args">>, Trigger),
+    gen_server:cast(?MODULE, {say, prop(<<"type">>, Args),
+                              prop(<<"text">>, Args),
+                              state(Data)}).
+
+do(Data) ->
+    Trigger = trigger(Data),
+    [Args] = prop(<<"args">>, Trigger),
+    gen_server:call(?MODULE, {do, prop(<<"action">>, Args),
+                              prop(<<"args">>, Args),
+                              sid(Data),
+                              state(Data)}).
+
+cleanup(Data) ->
+    gen_server:call(?MODULE, {cleanup, sid(Data), state(Data)}).
 
 %% Gen server handlers:
+handle_call({new_character, Nick, Sid}, _From, State) ->
+    case validate_nick(Nick) of
+        true ->
+            Password = new_password(Sid),
+            LocationID = mud:get_env(starting_location),
+            Location = prop(LocationID, State#state.locations),
+            Character = new_character(Nick),
+            Reply = [mk_store([{<<"nick">>, Nick},
+                               {<<"location">>, LocationID}]),
+                     mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>},
+                                                 {<<"password">>, Password}]]),
+                     mk_reply(<<"location_info">>, [Location]),
+                     mk_reply(<<"character_info">>, [Character])],
+            {reply, {ok, Reply}, join(Nick,
+                                      Sid,
+                                      Location,
+                                      add_character(Character, Nick, Password, LocationID, State))};
+
+        false ->
+            Reply = [mk_reply(<<"authorize">>, [[{<<"permission">>, null}]]),
+                     mk_error(<<"Selected nickname is invalid!">>)],
+            {reply, {ok, Reply}, State}
+    end;
+
+handle_call({log_in, Nick, Password, Sid}, _From, State) ->
+    Hashed = hash(Password),
+    case prop(Nick, State#state.passwd) of
+        null ->
+            {reply, {ok, mk_reply(<<"authorize">>, [[{<<"permission">>, null}]])}, State};
+
+        Player ->
+            case prop(<<"password">>, Player) of
+                Hashed ->
+                    LocationID = prop(<<"location">>, Player),
+                    Location = prop(LocationID, State#state.locations),
+                    Character = prop(Nick, State#state.players),
+                    Reply = [mk_store([{<<"nick">>, Nick},
+                                       {<<"location">>, LocationID}]),
+                             mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>}]]),
+                             mk_reply(<<"location_info">>, [Location]),
+                             mk_reply(<<"character_info">>, [Character])],
+                    {reply, {ok, Reply}, join(Nick, Sid, Location, State)};
+
+                _Otherwise ->
+                    {reply, {ok, mk_reply(<<"authorize">>, [[{<<"permission">>, null}]])}, State}
+            end
+    end;
+
+handle_call({do, Action, Args, Sid, _State}, _From, State) ->
+    %% TODO Call a callback with args and game state.
+    {reply, ok, State};
+
+handle_call(status, _From, State) ->
+    {reply, State, State};
+
 handle_call(_Msg, _From, State) ->
     {reply, ok, State}.
+
+handle_cast({say, Type, Text, PlayerState}, State) ->
+    Nick = prop(<<"nick">>, PlayerState),
+    LocationID = prop(<<"location">>, PlayerState),
+    publish(LocationID, [{<<"name">>, <<"msg">>},
+                         {<<"args">>, [[{<<"nick">>, Nick},
+                                        {<<"type">>, Type},
+                                        {<<"text">>, Text}]]}]),
+    {noreply, State};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -35,11 +127,56 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Intenal functions:
 load_game_data() ->
-    todo,
-    #state{}.
+    Resources = mud:get_env(resources),
+    lager:notice("Loading MUD resources: ~p...", [Resources]),
+    #state{
+       locations = load_locations(filename:join([Resources, <<"locations.json">>])),
+       players = load_players(filename:join([Resources, <<"players.json">>])),
+       passwd = load_passwords(filename:join([Resources, <<"passwd.json">>])),
+       items = load_items(filename:join([Resources, <<"items.json">>]))
+      }.
 
-hash(Password) ->
-    base64:encode(crypto:hash(sha, Password)).
+load_locations(File) ->
+    lists:map(extractor(<<"id">>), file_to_json(File)).
 
-publish(Channel, Message) ->
-    todo.
+load_players(File) ->
+    lists:map(extractor(<<"nick">>), file_to_json(File)).
+
+load_passwords(File) ->
+    file_to_json(File).
+
+load_items(File) ->
+    lists:map(extractor(<<"id">>), file_to_json(File)).
+
+extractor(Field) ->
+    fun(JSON) ->
+            {proplists:get_value(Field, JSON), JSON}
+    end.
+
+join(Nick, Sid, Location, State) ->
+    %% TODO Add Nick to Location, publish player_enters event.
+    State.
+
+leave(Nick, Sid, Location, State) ->
+    %% TODO Remove Nick from Location, publish player_leaves event.
+    State.
+
+add_character(Character, Nick, Password, Location, State) ->
+    Passwd = State#state.passwd,
+    Players = State#state.players,
+    State#state{players = [{Nick, Character} | Players],
+                passwd = [{Nick, [{<<"password">>, hash(Password)},
+                                  {<<"location">>, Location}]} | Passwd]}.
+
+new_character(Nick) ->
+    [{<<"nick">>, Nick},
+     {<<"stats">>, [{<<"health">>, 100},
+                    {<<"strength">>, 100},
+                    {<<"toughness">>, 100}]},
+     {<<"inventory">>, []}].
+
+new_password(Sid) ->
+    binary:part(Sid, {0, 10}).
+
+validate_nick(Nick) ->
+    byte_size(Nick) < 30.

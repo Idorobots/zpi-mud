@@ -4,16 +4,10 @@
         "name" : "second Tavern flood",
         "description" : "There are several locked rooms here.",
         "players" : [],
-        "items" : [
-	    {
-		"id" : "short_sword_1",
-		"name" : "Short sword"
-	    },
-	    {
-		"id" : "wooden_shield_1",
-		"name" : "Wooden shield"
-	    }
-	],
+        "items" : {
+	    "short_sword_1" : "Short sword",
+	    "wooden_shield_1" : "Wooden shield"
+	},
 	"locations" : {
 	    "downstairs" : "starting_tavern"
 	}
@@ -24,18 +18,12 @@
 	"name" : "the Tavern",
 	"description" : "A regular tavern, just as in any other RPG...",
 	"players" : [],
-	"items" : [
-	    {
-		"id" : "long_sword_1",
-		"name" : "Long sword"
-	    },
-	    {
-		"id" : "steel_shield_1",
-		"name" : "Steel shield"
-	    }
-	],
+	"items" : {
+	    "long_sword_1" : "Long sword",
+	    "steel_shield_1" : "Steel shield"
+	},
 	"locations" : {
-	    "upstairs" : "starting_tavern_rooms"
+	    "upstairs" : "starting_tavern_rooms",
 	    "downstairs" : "starting_tavern_basement"
 	}
     },
@@ -45,12 +33,9 @@
 	"name" : "Tavern basement",
 	"description" : "A dark room full of nothing.",
 	"players" : [],
-	"items" : [
-	    {
-		"id" : "steel_armor_1",
-		"name" : "Steel armor"
-	    }
-	],
+	"items" : {
+	    "steel_armor_1" : "Steel armor"
+	},
 	"locations" : {
 	    "upstairs" : "starting_tavern"
 	}

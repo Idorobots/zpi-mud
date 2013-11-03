@@ -1,16 +1,13 @@
 {
     "state" : {
-	"state_manager" : "sm.redis",
+	"state_manager" : "sm.local",
 	
         "initial_value" : {
 	    "nick" : null,
 	    "location" : null
 	},
 
-	"args" : {
-	    "connector" : "database",
-	    "expiration_timeout" : 86400000
-	}
+	"args" : null
     },
 
     "actions" : {
@@ -60,13 +57,6 @@
 		"hook" : "cp.put",
 		"args" : {
 		    "connector" : "backend",
-		    "endpoint" : "/leave"
-		}
-	    },
-	    {
-		"hook" : "cp.put",
-		"args" : {
-		    "connector" : "backend",
 		    "endpoint" : "/cleanup"
 		}
 	    }
@@ -97,16 +87,6 @@
 		"args" : {
 		    "connector" : "backend",
 		    "endpoint" : "/authorize"
-		}
-	    }
-	],
-
-	"go" : [
-	    {
-		"hook" : "cp.post",
-		"args" : {
-		    "connector" : "backend",
-		    "endpoint" : "/go"
 		}
 	    }
 	],

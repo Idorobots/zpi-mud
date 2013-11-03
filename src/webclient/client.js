@@ -54,24 +54,28 @@ function dispatch(socket, text) {
 	    receiveInfo("help - displays this message.");
 	    break;
 
+	case "examine":
+	    sendAction(socket, "examine", action.slice(1).join(" "));
+	    break;
+	    
 	case "look":
-	    sendAction(socket, "look", "");
+	    sendAction(socket, "examine", action.slice(1).join(" "));
 	    break;
 	    
 	case "move":
-	    sendAction(socket, "go", action.slice(1).join(" "));
+	    sendAction(socket, "move", action.slice(1).join(" "));
 	    break;
 
 	case "run":
-	    sendAction(socket, "go", action.slice(1).join(" "));
+	    sendAction(socket, "move", action.slice(1).join(" "));
 	    break;
 
 	case "walk":
-	    sendAction(socket, "go", action.slice(1).join(" "));
+	    sendAction(socket, "move", action.slice(1).join(" "));
 	    break;
 
 	case "go":
-	    sendAction(socket, "go", action.slice(1).join(" "));
+	    sendAction(socket, "move", action.slice(1).join(" "));
 	    break;
 
 	default:
@@ -93,7 +97,7 @@ function sendAction(socket, action, args) {
 function sendMsg(socket, text) {
     console.log("Sending a message!");
     socket.emit("say", {
-    "type" : "says",
+	"type" : "says",
 	"text" : text
     });
 }
@@ -124,12 +128,19 @@ function init() {
     var login = document.getElementById("login-box");
     var server = document.getElementById("server-name").value;
     var nick = document.getElementById("login-name").value;
+    var pass = document.getElementById("login-pass").value;
+
+    if(pass == "") pass = null;
+    
     var socket = io.connect(server);
 
     document.getElementById("login-button").onclick = function () {
 	console.log("Logging in as " + nick + "...");
 	nick = document.getElementById("login-name").value;
-        socket.emit("authorize", { "nick" : nick });
+	pass = document.getElementById("login-pass").value;
+	if(pass == "") pass = null;
+	
+        socket.emit("authorize", { "nick" : nick, "password" : pass });
     };
     
     socket.on("connect", function () {
@@ -149,6 +160,10 @@ function init() {
 		console.log("Authorized!");
 		login.innerHTML = "";
 
+		if(result.password) {
+		    alert("Your new password is " + result.password + ". Write it down!");
+		}
+
 		socket.on("bad_action", function (description) {
 		    receiveInfo(description);
 		});
@@ -156,8 +171,8 @@ function init() {
 		socket.on("location_info", function (msg) {
 		    receiveInfo("You are in " + msg.name + ". " + msg.description);
 
-		    msg.items.forEach(function (i) {
-		    	receiveInfo("You can see " + i + " in here...");
+		    Object.keys(msg.items).forEach(function (i) {
+		    	receiveInfo("You can see " + msg.items[i] + " (" + i  + ") in here...");
 		    });
 
 		    msg.players.forEach(function (p) {
@@ -167,7 +182,40 @@ function init() {
 		    });
 
 		    Object.keys(msg.locations).forEach(function (l) {
-		    	receiveInfo("You can go " + l + "...")
+		    	receiveInfo("You can go " + l + " (" + msg.locations[l] + ")...")
+		    });
+		});
+
+		socket.on("character_info", function (msg) {
+		    if(msg.nick != nick) {
+			receiveInfo("You examine " + msg.nick + ".");
+			receiveInfo("His/her stats:");
+		    } else {
+			receiveInfo("Your stats:");
+		    }
+
+		    Object.keys(msg.stats).forEach(function (s) {
+		    	receiveInfo("- " + s + " - " + msg.stats[s]);
+		    });
+
+		    if(msg.nick != nick) {
+			receiveInfo("His/her inventory:");
+		    } else {
+			receiveInfo("Your inventory:");
+		    }
+
+
+		    Object.keys(msg.inventory).forEach(function (i) {
+		    	receiveInfo("- " + msg.inventory[i] + " (" + i + ")");
+		    });
+		});
+
+		socket.on("item_info", function (msg) {
+		    receiveInfo("You examine " + msg.name + ". " + msg.description);
+		    receiveInfo("Its modifiers:");
+
+		    Object.keys(msg.modifiers).forEach(function (s) {
+		    	receiveInfo(s + " - " + msg.stats[s]);
 		    });
 		});
 
@@ -201,7 +249,7 @@ function init() {
 	    }
 	});
 
-	socket.emit("authorize", { "nick" : nick });
+	socket.emit("authorize", { "nick" : nick, "password" : pass });
     });
 }
 
