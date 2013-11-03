@@ -4,8 +4,8 @@
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([authorize/1, say/1, do/1, cleanup/1]).
 
--import(mud_utils, [hash/1, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
--import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2]).
+-import(mud_utils, [hash/1, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2]).
+-import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
 
 -record(state, {locations, players, passwd, items}).
 
@@ -101,13 +101,13 @@ handle_call({do, <<"examine">>, ID, _Sid, PlayerState}, _From, State) ->
     Nick = prop(<<"nick">>, PlayerState),
     LocationID = prop(<<"location">>, PlayerState),
     case object_by_id(Nick, LocationID, ID, State) of
-        {player, Player} ->
+        {player, Player, _Where} ->
             {reply, {ok, mk_reply(<<"character_info">>, [Player])}, State};
 
-        {location, Location} ->
+        {location, Location, _Where} ->
             {reply, {ok, mk_reply(<<"location_info">>, [Location])}, State};
 
-        {item, Item} ->
+        {item, Item, _Where} ->
             {reply, {ok, mk_reply(<<"item_info">>, [Item])}, State};
 
         _Otherwise ->
@@ -130,13 +130,61 @@ handle_call({do, <<"move">>, Where, Sid, PlayerState}, _From, State) ->
             {reply, {ok, Reply}, join(Nick, Sid, NewLocationID, leave(Nick, Sid, LocationID, State))}
     end;
 
-handle_call({do, <<"take">>, Args, Sid, _State}, _From, State) ->
-    %% TODO Call a callback with args and game state.
-    {reply, ok, State};
+handle_call({do, <<"take">>, ID, _Sid, PlayerState}, _From, State) ->
+    Nick = prop(<<"nick">>, PlayerState),
+    LocationID = prop(<<"location">>, PlayerState),
+    Player = prop(Nick, State#state.players),
+    Inventory = prop(<<"inventory">>, Player),
+    Location = prop(LocationID, State#state.locations),
+    Items = prop(<<"items">>, Location),
+    case object_by_id(Nick, LocationID, ID, State) of
+        {item, Item, LocationID} ->
+            Name = prop(<<"name">>, Item),
+            Reply = mk_reply(<<"inventory_update">>,
+                             [{<<"type">>, <<"take">>},
+                              {<<"id">>, ID},
+                              {<<"name">>, Name}]),
+            NewState = State#state{
+                         locations = update(LocationID,
+                                            update(<<"items">>, remove(ID, Items), Location),
+                                            State#state.locations),
+                         players = update(Nick,
+                                          update(<<"inventory">>, update(ID, Name, Inventory), Player),
+                                          State#state.players)
+                        },
+            {reply, {ok, Reply}, NewState};
 
-handle_call({do, <<"drop">>, Args, Sid, _State}, _From, State) ->
-    %% TODO Call a callback with args and game state.
-    {reply, ok, State};
+        _Otherwise ->
+            {reply, {ok, mk_reply(<<"bad_action">>, [<<"You can't take that!">>])}, State}
+    end;
+
+handle_call({do, <<"drop">>, ID, _Sid, PlayerState}, _From, State) ->
+    Nick = prop(<<"nick">>, PlayerState),
+    LocationID = prop(<<"location">>, PlayerState),
+    Player = prop(Nick, State#state.players),
+    Inventory = prop(<<"inventory">>, Player),
+    Location = prop(LocationID, State#state.locations),
+    Items = prop(<<"items">>, Location),
+    case object_by_id(Nick, LocationID, ID, State) of
+        {item, Item, Nick} ->
+            Name = prop(<<"name">>, Item),
+            Reply = mk_reply(<<"inventory_update">>,
+                             [{<<"type">>, <<"drop">>},
+                              {<<"id">>, ID},
+                              {<<"name">>, Name}]),
+            NewState = State#state{
+                         locations = update(LocationID,
+                                            update(<<"items">>, update(ID, Name, Items), Location),
+                                            State#state.locations),
+                         players = update(Nick,
+                                          update(<<"inventory">>, remove(ID, Inventory), Player),
+                                          State#state.players)
+                        },
+            {reply, {ok, Reply}, NewState};
+
+        _Otherwise ->
+            {reply, {ok, mk_reply(<<"bad_action">>, [<<"You don't have that!">>])}, State}
+    end;
 
 handle_call({do, <<"attack">>, Args, Sid, _State}, _From, State) ->
     %% TODO Call a callback with args and game state.
@@ -246,7 +294,7 @@ validate_nick(Nick) ->
     byte_size(Nick) < 30.
 
 object_by_id(_Nick, LocationID, LocationID, State) ->
-    {location, prop(LocationID, State#state.locations)};
+    {location, prop(LocationID, State#state.locations), LocationID};
 
 object_by_id(Nick, LocationID, ID, State) ->
     CurrLocation = prop(LocationID, State#state.locations),
@@ -260,13 +308,13 @@ object_by_id(Nick, LocationID, ID, State) ->
                 null  ->
                     case prop(ID, Items) of
                         null  -> nothing;
-                        _Item -> {item, prop(ID, State#state.items)}
+                        _Item -> {item, prop(ID, State#state.items), LocationID}
                     end;
 
                 _Item ->
-                    {item, prop(ID, State#state.items)}
+                    {item, prop(ID, State#state.items), Nick}
             end;
 
         true ->
-            {player, prop(ID, State#state.players)}
+            {player, prop(ID, State#state.players), LocationID}
     end.

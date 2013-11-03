@@ -61,6 +61,26 @@ function dispatch(socket, text) {
 	case "look":
 	    sendAction(socket, "examine", action.slice(1).join(" "));
 	    break;
+
+	case "drop":
+	    sendAction(socket, "drop", action.slice(1).join(" "));
+	    break;
+	    
+	case "throw":
+	    sendAction(socket, "drop", action.slice(1).join(" "));
+	    break;
+	    
+	case "grab":
+	    sendAction(socket, "take", action.slice(1).join(" "));
+	    break;
+	    
+	case "take":
+	    sendAction(socket, "take", action.slice(1).join(" "));
+	    break;
+	    
+	case "steal":
+	    sendAction(socket, "take", action.slice(1).join(" "));
+	    break;
 	    
 	case "move":
 	    sendAction(socket, "move", action.slice(1).join(" "));
@@ -218,6 +238,14 @@ function init() {
 			var mod = msg.modifiers[s];
 		    	receiveInfo(s + " - " + (mod > 0 ? "+" + mod : mod));
 		    });
+		});
+
+		socket.on("inventory_update", function (msg) {
+		    if(msg.type == "take") {
+			receiveInfo("You pick up " + msg.name + ".");
+		    } else {
+			receiveInfo("You drop " + msg.name + ".");
+		    }
 		});
 
 		socket.on("msg", function (msg) {
