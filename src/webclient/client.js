@@ -211,11 +211,12 @@ function init() {
 		});
 
 		socket.on("item_info", function (msg) {
-		    receiveInfo("You examine " + msg.name + ". " + msg.description);
+		    receiveInfo("You examine " + msg.name + " - " + msg.description);
 		    receiveInfo("Its modifiers:");
 
 		    Object.keys(msg.modifiers).forEach(function (s) {
-		    	receiveInfo(s + " - " + msg.stats[s]);
+			var mod = msg.modifiers[s];
+		    	receiveInfo(s + " - " + (mod > 0 ? "+" + mod : mod));
 		    });
 		});
 
@@ -245,7 +246,7 @@ function init() {
 	    }
 	    else {
 		console.log("Not authorized!");
-		alert("Failed to login, please select another nickname!");
+		alert("Failed to login!");
 	    }
 	});
 

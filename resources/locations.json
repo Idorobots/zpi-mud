@@ -1,7 +1,7 @@
 [
     {
 	"id" : "starting_tavern_rooms",
-        "name" : "second Tavern flood",
+        "name" : "the second Tavern flood",
         "description" : "There are several locked rooms here.",
         "players" : [],
         "items" : {
@@ -30,7 +30,7 @@
 
     {
 	"id" : "starting_tavern_basement",
-	"name" : "Tavern basement",
+	"name" : "the Tavern basement",
 	"description" : "A dark room full of nothing.",
 	"players" : [],
 	"items" : {

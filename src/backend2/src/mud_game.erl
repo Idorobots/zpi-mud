@@ -97,23 +97,48 @@ handle_call({log_in, Nick, Password, Sid}, _From, State) ->
             end
     end;
 
-handle_call({do, <<"examine">>, Args, Sid, _State}, _From, State) ->
-    %% TODO Call a callback with args and game state.
-    {reply, ok, State};
+handle_call({do, <<"examine">>, ID, _Sid, PlayerState}, _From, State) ->
+    Nick = prop(<<"nick">>, PlayerState),
+    LocationID = prop(<<"location">>, PlayerState),
+    case object_by_id(Nick, LocationID, ID, State) of
+        {player, Player} ->
+            {reply, {ok, mk_reply(<<"character_info">>, [Player])}, State};
 
-handle_call({do, <<"move">>, Args, Sid, _State}, _From, State) ->
-    %% TODO Call a callback with args and game state.
-    {reply, ok, State};
+        {location, Location} ->
+            {reply, {ok, mk_reply(<<"location_info">>, [Location])}, State};
 
-handle_call({do, <<"attack">>, Args, Sid, _State}, _From, State) ->
+        {item, Item} ->
+            {reply, {ok, mk_reply(<<"item_info">>, [Item])}, State};
+
+        _Otherwise ->
+            {reply, {ok, mk_reply(<<"bad_action">>, [<<"You can't examine that!">>])}, State}
+    end;
+
+handle_call({do, <<"move">>, Where, Sid, PlayerState}, _From, State) ->
     %% TODO Call a callback with args and game state.
-    {reply, ok, State};
+    Nick = prop(<<"nick">>, PlayerState),
+    LocationID = prop(<<"location">>, PlayerState),
+    CurrLocation = prop(LocationID, State#state.locations),
+    Reachable = prop(<<"locations">>, CurrLocation),
+    case prop(Where, Reachable) of
+        null ->
+            {reply, {ok, mk_reply(<<"bad_action">>, [<<"You can't go there!">>])}, State};
+
+        NewLocationID ->
+            Reply = [mk_store([{<<"location">>, NewLocationID}]),
+                     mk_reply(<<"location_info">>, [prop(NewLocationID, State#state.locations)])],
+            {reply, {ok, Reply}, join(Nick, Sid, NewLocationID, leave(Nick, Sid, LocationID, State))}
+    end;
 
 handle_call({do, <<"take">>, Args, Sid, _State}, _From, State) ->
     %% TODO Call a callback with args and game state.
     {reply, ok, State};
 
 handle_call({do, <<"drop">>, Args, Sid, _State}, _From, State) ->
+    %% TODO Call a callback with args and game state.
+    {reply, ok, State};
+
+handle_call({do, <<"attack">>, Args, Sid, _State}, _From, State) ->
     %% TODO Call a callback with args and game state.
     {reply, ok, State};
 
@@ -219,3 +244,29 @@ new_password(Sid) ->
 
 validate_nick(Nick) ->
     byte_size(Nick) < 30.
+
+object_by_id(_Nick, LocationID, LocationID, State) ->
+    {location, prop(LocationID, State#state.locations)};
+
+object_by_id(Nick, LocationID, ID, State) ->
+    CurrLocation = prop(LocationID, State#state.locations),
+    Players = prop(<<"players">>, CurrLocation),
+    Items = prop(<<"items">>, CurrLocation),
+    Player = prop(Nick, State#state.players),
+    OwnedItems = prop(<<"inventory">>, Player),
+    case lists:member(ID, Players) of
+        false ->
+            case prop(ID, OwnedItems) of
+                null  ->
+                    case prop(ID, Items) of
+                        null  -> nothing;
+                        _Item -> {item, prop(ID, State#state.items)}
+                    end;
+
+                _Item ->
+                    {item, prop(ID, State#state.items)}
+            end;
+
+        true ->
+            {player, prop(ID, State#state.players)}
+    end.
