@@ -50,7 +50,10 @@ function dispatch(socket, text) {
 	case "help":
 	    receiveInfo("Available commands:");
 	    receiveInfo("move|walk|go|run DESTINATION - onwards you go!");
-	    receiveInfo("look - look around.");
+	    receiveInfo("examine|look AT - look at something,");
+	    receiveInfo("drop|throw ITEM - drop item from your inventory,");
+	    receiveInfo("take|grab|steal ITEM - put an item in your inventory,");
+	    receiveInfo("hit|kick|kill|attack PLAYER - attack somebody,");
 	    receiveInfo("help - displays this message.");
 	    break;
 
@@ -96,6 +99,22 @@ function dispatch(socket, text) {
 
 	case "go":
 	    sendAction(socket, "move", action.slice(1).join(" "));
+	    break;
+
+	case "attack":
+	    sendAction(socket, "attack", action.slice(1).join(" "));
+	    break;
+
+	case "hit":
+	    sendAction(socket, "attack", action.slice(1).join(" "));
+	    break;
+
+	case "kick":
+	    sendAction(socket, "attack", action.slice(1).join(" "));
+	    break;
+
+	case "kill":
+	    sendAction(socket, "attack", action.slice(1).join(" "));
 	    break;
 
 	default:
@@ -189,7 +208,7 @@ function init() {
 		});
 		
 		socket.on("location_info", function (msg) {
-		    receiveInfo("You are in " + msg.name + ". " + msg.description);
+		    receiveInfo("You are in " + msg.name + " (" + msg.id + "). " + msg.description);
 
 		    Object.keys(msg.items).forEach(function (i) {
 		    	receiveInfo("You can see " + msg.items[i] + " (" + i  + ") in here...");
@@ -252,6 +271,26 @@ function init() {
 		    receiveMsg(msg.nick, msg.type, msg.text);
 		});
 
+		socket.on("battle", function (msg) {
+		    var attacker = (msg.attacker == nick) ? "You" : msg.attacker;
+		    var defender = (msg.defender == nick) ? "you" : msg.defender;
+		    
+		    switch(msg.type) {
+		    case "hit":
+		    	receiveInfo(attacker + " smacked " + defender + " for " + msg.value + " damage!");
+			break;
+
+		    case "miss":
+		    	receiveInfo(attacker + " missed " + defender + "!");
+			break;
+
+		    case "kill":
+			receiveInfo(attacker + " smacked " + defender + " for " + msg.value + " damage!");
+			receiveInfo(attacker + " killed " + defender + "!");
+			break;
+		    }
+		});
+		
 		socket.on("player_enters", function (msg) {
 		    if(msg.nick != nick) {
 	    		receiveInfo(msg.nick + " entered " + msg.location + "...");
