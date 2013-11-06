@@ -119,7 +119,7 @@ W odpowiedzi otrzymamy:
 ...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= odpowiednio dla powodzenia i niepowodzenia autoryzacji.
 
 ** Tworzenie postaci
-Tworzenie nowej postaci przebiega bardzo prosto - przeprowadzamy autoryzację do serwera nie podając hasła (brak pola =password= lub ustawienie jego wartości na =null=). W odpowiedzi serwer zwróci:
+Tworzenie nowej postaci przebiega bardzo prosto - przeprowadzamy autoryzację do serwera podając nowy nick i nowe hasło. Brak pola =password= lub ustawienie jego wartości na =null= spowoduje wygenerowanie nowego hasła.  Jeśli postać o takim nicku nie istnieje konto zostanie utworzone, a serwer w odpowiedzi zwróci:
 
 #+begin_src javascript
   {
@@ -134,16 +134,16 @@ Tworzenie nowej postaci przebiega bardzo prosto - przeprowadzamy autoryzację do
 #+end_src
 
 #+latex: \noindent
-...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= (odpowiadająca sytuacji, gdy nick został już przez kogoś zajęty). =haslo= będzie zawierało wygenerowane przez serwer hasło dla nowego konta gracza, lub wartość =null= w przypadku, gdy tworzenie nowego konta się nie powiedzie.
-
+...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= (odpowiadająca sytuacji, gdy nick został już przez kogoś zajęty). =haslo= będzie zawierało wybrane (lub wygenerowane przez serwer) hasło dla nowego konta gracza, lub wartość =null= w przypadku, gdy tworzenie nowego konta się nie powiedzie.
 
 #+latex: \noindent
 *Obecnie nie mam w planach dodawania zmiany hasła itd, więc będzie to jedyny sposób tworzenia nowych kont graczy.*
 
 ** "Wejście" do gry
-Bezpośrednio po wejściu do gry otrzymamy dwa event'y opisujące miejsce, w którym się znajdujemy i wydarzenia w nim się odbywające:
+Bezpośrednio po wejściu do gry otrzymamy kilka event'ów opisujących świat gry, w którym się znajdujemy i wydarzenia w nim się odbywające:
 
 - =location_info= - opisane przy okazji komendy [[ref:examine][examine]],
+- =character_info= - opisane przy okazji komendy [[ref:examine][examine]],
 - =player_enters= - opisane przy okazji komendy [[ref:move][move]]
 
 ** Rozmowa
@@ -259,6 +259,34 @@ Przykład:
 #+end_src
 
 #+latex: \noindent
+Dodatkowo zostaną wygenerowane dwa event'y propagowane do wszystkich graczy obecnych w starej i nowej lokacji gracza:
+
+#+begin_src javascript
+  {
+      "name" : "player_leaves",
+      "args" : [
+          {
+              "location" : nazwa_opuszczanej_lokacji,
+              "nick" : nick_opuszczajacego_gracza
+          }
+      ]
+  }
+  
+  {
+      "name" : "player_enters",
+      "args" : [
+          {
+              "location" : nazwa_nowe_lokacji,
+              "nick" : nick_gracza
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+Event'y te istnieją z czysto kosmetycznych względów.
+
+#+latex: \noindent
 Więcej o =opisie_lokacji= [[ref:location][tutaj]].
 
 ** =attack=
@@ -278,16 +306,17 @@ Przykład:
       "name" : "battle",
       "args" : [
           {
-              "attacker" : nazwa_gracza_atakującego,
+              "attacker" : nazwa_gracza_atakujacego,
               "defender" : nazwa_drugiego_gracza,
-              "description" : opis_wydarzenia
+              "type" : typ_wydarzenia,
+              "value" : wartosc_wydarzenia
           }
       ]
   }
 #+end_src
 
 #+latex: \noindent
-=opis_wydarzenia= zawiera opis przebiegu walki (na przykład "Looses 5 health!", lub "Shot was parried!"). Podobne event dostaną wszyscy gracze obecni w danej lokacji. Wykonanie tej komendy może rozzłościć NPC lub przeciwnika prowadząc do walki na śmierć i życie (lub ucieczkę do innej lokacji). W przypadku śmierci któregoś z graczy otrzymamy taki sam event ze stosownym opisem natomiast przegrany gracz zostanie usunięty z obecnej lokacji.
+=typ_wydarzenia= zawiera typ zaistniałego wydarzenia (na przykład "hit", "miss", "kill"); jeśli obecne jest pole =wartosc_wydarzenia= zawiera ono wartość liczbową opisującą zdarzenie (na przykład dla typu "hit" =wartosc_wydarzenia= będzie opisywała siłę uderzenia). Podobne event dostaną wszyscy gracze obecni w danej lokacji. Wykonanie tej komendy może rozzłościć NPC lub przeciwnika prowadząc do walki na śmierć i życie (lub ucieczkę do innej lokacji). W przypadku śmierci któregoś z graczy otrzymamy taki sam event ze stosownym opisem natomiast przegrany gracz zostanie usunięty z obecnej lokacji (jego przedmioty w niej zostają).
 
 ** =take= / =drop=
 Przykład:
@@ -306,16 +335,20 @@ Przykład:
       "name" : "inventory_update",
       "args" : {
           "type" : typ_aktualizacji,
-          "item" : opis_przedmiotu
+          "id" : id_przedmiotu,
+          "name" : nazwa_przedmiotu
       }
   }
 #+end_src
 
 #+latex: \noindent
-Więcej o =opisie_przedmiotu= [[ref:item][tutaj]].
+Więcej o przedmiotach [[ref:item][tutaj]].
 
 * Reprezentacja świata gry
 Poniższe sekcje zawierają opisy różnych obiektów świata gry, które mogą się zmieniać w trakcie gry w reakcji na akcje graczy.
+
+#+latex: \noindent
+Serwer spodziewa się pojedynczych plików zawierających JSON'owe array'e obiektów opisanych poniżej (przykładowy świat dostępny jest [[https://github.com/Idorobots/zpi-mud/tree/master/resources][tutaj]]). Dodatkowo serwer zakłada, że wszelkie identyfikatory (=id= dla lokacji i przedmiotów oraz =nick= dla graczy) są *unikatowe*.
 
 ** Gracze/NCP/Przeciwnicy
 # <<<ref:character>>>
@@ -337,15 +370,13 @@ Stan gracza można zrozumieć jako następujący JSON:
 - =zdrowie= jest liczbą całkowitą określającą poziom zdrowia gracza (po osiąginięciu wartości <= 0 gracz ginie),
 - =sila= jest liczbą całkowitą określającą siłę gracza, która odpowiada za siłę jego ataków,
 - =odpornosc= jest liczbą całkowitą określającą wytrzymałość gracza, która odpowiada za odporność na ataki innych graczy,
-- =inventarz= jest array'em identyfikatorów przedmiotów posiadanych przez gracza:
+- =inventarz= jest obiektem zawierającym ID przedmiotów posiadanych przez gracza:
 
 #+begin_src javascript
-  [
-      {
-          "id" : id_przedmiotu,
-          "name" : nazwa_przedmiotu
-      }
-  ]
+  {
+      id_przedmiotu : nazwa_przedmiotu,
+      ...
+  }
 #+end_src
 
 #+latex: \noindent
@@ -368,18 +399,17 @@ Stan lokacji przedstawia następujący JSON:
 - =id_lokacji= jest unikatowym indentyikatorem lokacji,
 - =nazwa_lokacji= jest krótkim stringiem będącym nazwą lokacji,
 - =opis_lokacji= zawiera krótki opis tego, co znajduje się w danej lokacji,
-- =players= jest array'em nazw graczy/NPC/przeciwników znajdujących się w danej lokacji,
-- =items= jest array'em identyikatorow przedmiotów znajdujących się w danej lokacji:
+- =gracze_w_lokacji= jest array'em nazw graczy/NPC/przeciwników znajdujących się w danej lokacji,
+- =przedmioty_w_lokacji= jest obiektem zawierającym ID przedmiotów znajdujących się w danej lokacji:
 
 #+begin_src javascript
-  [
-      {
-          "id" : id_przedmiotu,
-          "name" : nazwa_przedmiotu
-      }
-  ]
+  {
+      id_przedmiotu : nazwa_przedmiotu,
+      ...
+  }
 #+end_src
-- =location= jest obiektem zawierającym ścieżki do innych lokacji:
+
+- =drogi_do_innych_lokacji= jest obiektem zawierającym ścieżki do innych lokacji:
 
 #+begin_src javascript
   {
@@ -420,5 +450,3 @@ Opis przedmiotów dostępnych w świecie przedstiawia nostępujący JSON:
 - =sila= jest liczbą całkowitą określającą modyfikator siły gracza,
 - =odpornosc= jest liczbą całkowitą określającą modyfikator wytrzymałości gracza,
 
-** Akcje
-Bardziej złożone akcje, które mogą wystąpić w świecie gry (na przykład przy okazji misji itp) będą zrealizowane jako skrypty Python'owe i opisane tutaj później.
