@@ -6,6 +6,7 @@
 
 -import(mud_utils, [hash/1, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
+-import(mud_utils, [json_to_file/2]).
 
 -record(state, {locations, players, passwd, items}).
 
@@ -17,6 +18,7 @@ start_link() ->
 init([]) ->
     lager:notice("Starting MUD Game..."),
     random:seed(now()),
+    erlang:start_timer(mud:get_env(save_timeout), self(), save_state),
     {ok, load_game_data()}.
 
 terminate(_Reason, _State) ->
@@ -69,7 +71,7 @@ handle_call({new_character, Nick, Password, Sid}, _From, State) ->
             {reply, {ok, Reply}, join(Nick,
                                       Sid,
                                       LocationID,
-                                      add_character(Character, Nick, Password, LocationID, Sid, State))};
+                                      add_character(Character, Nick, Password, LocationID, State))};
 
         false ->
             Reply = [mk_reply(<<"authorize">>, [[{<<"permission">>, null}]]),
@@ -301,6 +303,11 @@ handle_cast({cleanup, Sid, PlayerState}, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+handle_info({timeout, _TRef, save_state}, State) ->
+    save_game_data(State),
+    erlang:start_timer(mud:get_env(save_timeout), self(), save_state),
+    {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -318,6 +325,14 @@ load_game_data() ->
        items = load_items(filename:join([Resources, <<"items.json">>]))
       }.
 
+save_game_data(State) ->
+    Resources = mud:get_env(resources),
+    lager:notice("Saving MUD resources: ~p...", [Resources]),
+    save_locations(filename:join([Resources, <<"locations.json">>]), State#state.locations),
+    save_players(filename:join([Resources, <<"players.json">>]), State#state.players),
+    save_passwords(filename:join([Resources, <<"passwd.json">>]), State#state.passwd),
+    save_items(filename:join([Resources, <<"items.json">>]), State#state.items).
+
 load_locations(File) ->
     lists:map(extractor(<<"id">>), file_to_json(File)).
 
@@ -329,6 +344,18 @@ load_passwords(File) ->
 
 load_items(File) ->
     lists:map(extractor(<<"id">>), file_to_json(File)).
+
+save_locations(File, Data) ->
+    json_to_file(File, lists:map(fun({_Key, Value}) -> update(<<"players">>, [], Value) end, Data)).
+
+save_players(File, Data) ->
+    json_to_file(File, lists:map(fun({_Key, Value}) -> Value end, Data)).
+
+save_passwords(File, Data) ->
+    json_to_file(File, Data).
+
+save_items(File, Data) ->
+    json_to_file(File, lists:map(fun({_Key, Value}) -> Value end, Data)).
 
 extractor(Field) ->
     fun(JSON) ->
@@ -361,10 +388,9 @@ leave(Nick, Sid, LocationID, State) ->
                          State#state.locations)
      }.
 
-add_character(Character, Nick, Password, Location, Sid, State) ->
+add_character(Character, Nick, Password, Location, State) ->
     State#state{players = update(Nick, Character, State#state.players),
                 passwd = update(Nick, [{<<"password">>, hash(Password)},
-                                       {<<"sid">>, Sid},
                                        {<<"location">>, Location}], State#state.passwd)}.
 
 apply_item([], Stats) ->

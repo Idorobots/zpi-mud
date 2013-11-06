@@ -1,6 +1,7 @@
 -module(mud_utils).
 -export([hash/1, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -export([mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
+-export([json_to_file/2]).
 
 %% Util functions:
 hash(Password) ->
@@ -29,6 +30,9 @@ file_to_json(File) ->
         {ok, Contents} -> jsonx:decode(Contents, [{format, proplist}]);
         Otherwise -> Otherwise
     end.
+
+json_to_file(File, Data) ->
+    file:write_file(File, jsonx:encode(Data)).
 
 prop(Name, List) ->
     prop(Name, List, null).
