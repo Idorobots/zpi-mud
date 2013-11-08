@@ -4,7 +4,7 @@
 
 	"acceptors" : 100,
         "port" : 8080,
-        "allowed_origins" : ["null", "ws://localhost", "http://student.agh.edu.pl"],
+        "allowed_origins" : [null, "null", "ws://localhost", "http://student.agh.edu.pl"],
 
 	"direct_websocket" : true,
 	"websocket_ping_timeout" : 5000,
