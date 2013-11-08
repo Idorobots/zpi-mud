@@ -15,7 +15,7 @@ start([ResourcesDir]) ->
     application:start(cowboy),
     set_env(resources, list_to_binary(atom_to_list(ResourcesDir))),
     Ret = application:start(mud),
-    hive:start_dev(['./deps/hive/plugins', './deps/hive/etc/schema', '../../config/config.json']),
+    hive:start_dev(['./deps/hive/plugins', './deps/hive/etc/schema', '../config/config.json']),
     Ret.
 
 start(_StartType, _StartArgs) ->
