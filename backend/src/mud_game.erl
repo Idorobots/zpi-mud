@@ -488,7 +488,8 @@ offline(Nick, State) ->
     end.
 
 validate_nick(Nick) ->
-    byte_size(Nick) < 30 andalso byte_size(Nick) > 0.
+    byte_size(Nick) < mud:get_env(max_allowed_nick_len)
+        andalso byte_size(Nick) > mud:get_env(min_allowed_nick_len).
 
 object_by_id(_Nick, LocationID, LocationID, State) ->
     {location, prop(LocationID, State#state.locations), LocationID};
@@ -502,7 +503,7 @@ object_by_id(Nick, LocationID, ID, State) ->
     case lists:member(ID, Players) of
         false ->
             case prop(ID, OwnedItems) of
-                null  ->
+                null ->
                     case prop(ID, Items) of
                         null  -> nothing;
                         _Item -> {item, prop(ID, State#state.items), LocationID}
