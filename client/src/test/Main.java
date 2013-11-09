@@ -10,11 +10,12 @@ class Main {
             return;
         }
 
-        final String server = args[0];
-        final String nick = args[1];
-        final String password = args[2];
-
         try {
+            final String server = args[0];
+            final String nick = args[1];
+            final String password = args[2];
+            final String hash = SHA1.hash(nick + password);
+
             System.out.println("Connecting to " + server + "...");
             final SocketIO socket = new SocketIO(server);
             socket.connect(new IOCallback() {
@@ -45,7 +46,7 @@ class Main {
 
                         try {
                             socket.emit("authorize",
-                                        new JSONObject().put("nick", nick).put("password", password));
+                                        new JSONObject().put("nick", nick).put("password", hash));
                         } catch (JSONException jsonException) {
                             System.out.println("an Error occured");
                             jsonException.printStackTrace();

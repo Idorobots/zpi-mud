@@ -95,10 +95,21 @@ Przed rozpoczęciem gry gracz musi się autoryzować na swoje konto wysyłając 
       "args" : [
           {
               "nick" : login,
-              "password" : haslo
+              "password" : hash_hasla
           }
       ]
   }
+#+end_src
+
+#+latex: \noindent
+...gdzie =login= to wybrany Nick gracza, a =hash_hasla= to hash *SHA1* otrzymany z wybranego przez gracza hasła, posolonego jego nazwą użytkownika:
+
+#+begin_src javascript
+nickname = "Nickname";
+password = "Password"
+// (nickname + password) == "NicknamePassword"
+hash = sha1(nickname + password);
+// hash == "ca805ddc46b39fc3cb1099ec5442b9c7aae49e47"
 #+end_src
 
 #+latex: \noindent
@@ -119,22 +130,21 @@ W odpowiedzi otrzymamy:
 ...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= odpowiednio dla powodzenia i niepowodzenia autoryzacji.
 
 ** Tworzenie postaci
-Tworzenie nowej postaci przebiega bardzo prosto - przeprowadzamy autoryzację do serwera podając nowy nick i nowe hasło. Brak pola =password= lub ustawienie jego wartości na =null= spowoduje wygenerowanie nowego hasła.  Jeśli postać o takim nicku nie istnieje konto zostanie utworzone, a serwer w odpowiedzi zwróci:
+Tworzenie nowej postaci przebiega bardzo prosto - przeprowadzamy autoryzację do serwera podając nowy nick i nowe hasło. Jeśli postać o takim nicku nie istnieje konto zostanie utworzone, a serwer w odpowiedzi zwróci:
 
 #+begin_src javascript
   {
       "name" : "authorize",
       "args" : [
           {
-              "permission" : wynik_autoryzacji,
-              "password" : haslo
+              "permission" : wynik_autoryzacji
           }
       ]
   }
 #+end_src
 
 #+latex: \noindent
-...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= (odpowiadająca sytuacji, gdy nick został już przez kogoś zajęty). =haslo= będzie zawierało wybrane (lub wygenerowane przez serwer) hasło dla nowego konta gracza, lub wartość =null= w przypadku, gdy tworzenie nowego konta się nie powiedzie.
+...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= (odpowiadająca sytuacji, gdy nick został już przez kogoś zajęty).
 
 #+latex: \noindent
 *Obecnie nie mam w planach dodawania zmiany hasła itd, więc będzie to jedyny sposób tworzenia nowych kont graczy.*

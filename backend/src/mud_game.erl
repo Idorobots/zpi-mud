@@ -4,9 +4,8 @@
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([authorize/1, say/1, do/1, cleanup/1]).
 
--import(mud_utils, [hash/1, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
+-import(mud_utils, [json_to_file/2, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
--import(mud_utils, [json_to_file/2]).
 
 -record(state, {locations, players, passwd, items}).
 
@@ -64,8 +63,7 @@ handle_call({new_character, Nick, Password, Sid}, _From, State) ->
             Character = new_character(Nick),
             Reply = [mk_store([{<<"nick">>, Nick},
                                {<<"location">>, LocationID}]),
-                     mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>},
-                                                 {<<"password">>, Password}]]),
+                     mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>}]]),
                      mk_reply(<<"location_info">>, [Location]),
                      mk_reply(<<"character_info">>, [Character])],
             {reply, {ok, Reply}, join(Nick,
@@ -79,18 +77,17 @@ handle_call({new_character, Nick, Password, Sid}, _From, State) ->
             {reply, {ok, Reply}, State}
     end;
 
-handle_call({authorize, Nick, null, Sid}, From, State) ->
-    handle_call({new_character, Nick, new_password(Sid), Sid}, From, State);
+handle_call({authorize, _Nick, null, _Sid}, _From, State) ->
+    {reply, {ok, mk_reply(<<"authorize">>, [[{<<"permission">>, null}]])}, State};
 
 handle_call({authorize, Nick, Password, Sid}, From, State) ->
-    Hashed = hash(Password),
     case prop(Nick, State#state.passwd) of
         null ->
             handle_call({new_character, Nick, Password, Sid}, From, State);
 
         Player ->
             case prop(<<"password">>, Player) of
-                Hashed ->
+                Password ->
                     LocationID = prop(<<"location">>, Player),
                     Location = prop(LocationID, State#state.locations),
                     Character = prop(Nick, State#state.players),
@@ -390,7 +387,7 @@ leave(Nick, Sid, LocationID, State) ->
 
 add_character(Character, Nick, Password, Location, State) ->
     State#state{players = update(Nick, Character, State#state.players),
-                passwd = update(Nick, [{<<"password">>, hash(Password)},
+                passwd = update(Nick, [{<<"password">>, Password},
                                        {<<"location">>, Location}], State#state.passwd)}.
 
 apply_item([], Stats) ->
@@ -458,11 +455,8 @@ is_char_alive(Nick, State) ->
             0 < prop(<<"health">>, prop(<<"stats">>, Player, []), 0)
     end.
 
-new_password(Sid) ->
-    binary:part(Sid, {0, 10}).
-
 validate_nick(Nick) ->
-    byte_size(Nick) < 30.
+    byte_size(Nick) < 30 andalso byte_size(Nick) > 0.
 
 object_by_id(_Nick, LocationID, LocationID, State) ->
     {location, prop(LocationID, State#state.locations), LocationID};
