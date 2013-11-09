@@ -7,7 +7,13 @@
 -import(mud_utils, [json_to_file/2, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
 
--record(state, {locations, players, passwd, items}).
+-record(state, {
+          online_players = [],
+          locations = [],
+          players = [],
+          passwd = [],
+          items = []
+         }).
 
 %% This is a tiny wrapper that makes restarts of various Hive HTTP servers predictable and well-behaved.
 %% Gen server callbacks:
@@ -66,10 +72,15 @@ handle_call({new_character, Nick, Password, Sid}, _From, State) ->
                      mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>}]]),
                      mk_reply(<<"location_info">>, [Location]),
                      mk_reply(<<"character_info">>, [Character])],
-            {reply, {ok, Reply}, join(Nick,
-                                      Sid,
-                                      LocationID,
-                                      add_character(Character, Nick, Password, LocationID, State))};
+            {reply, {ok, Reply}, online(Nick,
+                                        join(Nick,
+                                             Sid,
+                                             LocationID,
+                                             add_character(Character,
+                                                           Nick,
+                                                           Password,
+                                                           LocationID,
+                                                           State)))};
 
         false ->
             Reply = [mk_reply(<<"authorize">>, [[{<<"permission">>, null}]]),
@@ -77,29 +88,34 @@ handle_call({new_character, Nick, Password, Sid}, _From, State) ->
             {reply, {ok, Reply}, State}
     end;
 
-handle_call({authorize, _Nick, null, _Sid}, _From, State) ->
-    {reply, {ok, mk_reply(<<"authorize">>, [[{<<"permission">>, null}]])}, State};
-
 handle_call({authorize, Nick, Password, Sid}, From, State) ->
     case prop(Nick, State#state.passwd) of
         null ->
             handle_call({new_character, Nick, Password, Sid}, From, State);
 
         Player ->
-            case prop(<<"password">>, Player) of
-                Password ->
-                    LocationID = prop(<<"location">>, Player),
-                    Location = prop(LocationID, State#state.locations),
-                    Character = prop(Nick, State#state.players),
-                    Reply = [mk_store([{<<"nick">>, Nick},
-                                       {<<"location">>, LocationID}]),
-                             mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>}]]),
-                             mk_reply(<<"location_info">>, [Location]),
-                             mk_reply(<<"character_info">>, [Character])],
-                    {reply, {ok, Reply}, join(Nick, Sid, LocationID, State)};
+            case is_char_online(Nick, State) of
+                false ->
+                    case prop(<<"password">>, Player) of
+                        Password ->
+                            LocationID = prop(<<"location">>, Player),
+                            Location = prop(LocationID, State#state.locations),
+                            Character = prop(Nick, State#state.players),
+                            Reply = [mk_store([{<<"nick">>, Nick},
+                                               {<<"location">>, LocationID}]),
+                                     mk_reply(<<"authorize">>, [[{<<"permission">>, <<"granted">>}]]),
+                                     mk_reply(<<"location_info">>, [Location]),
+                                     mk_reply(<<"character_info">>, [Character])],
+                            {reply, {ok, Reply}, online(Nick, join(Nick, Sid, LocationID, State))};
 
-                _Otherwise ->
-                    {reply, {ok, mk_reply(<<"authorize">>, [[{<<"permission">>, null}]])}, State}
+                        _Otherwise ->
+                            {reply, {ok, mk_reply(<<"authorize">>, [[{<<"permission">>, null}]])}, State}
+                    end;
+
+                true ->
+                    Reply = [mk_reply(<<"authorize">>, [[{<<"permission">>, null}]]),
+                             mk_error(<<"Player is already online!">>)],
+                    {reply, {ok, Reply}, State}
             end
     end;
 
@@ -291,7 +307,7 @@ handle_cast({cleanup, Sid, PlayerState}, State) ->
                                          update(<<"location">>, LocationID, Passwd),
                                          State#state.passwd)
                         },
-            {noreply, leave(Nick, Sid, LocationID, NewState)};
+            {noreply, offline(Nick, leave(Nick, Sid, LocationID, NewState))};
 
         false ->
             {noreply, State}
@@ -319,7 +335,8 @@ load_game_data() ->
        locations = load_locations(filename:join([Resources, <<"locations.json">>])),
        players = load_players(filename:join([Resources, <<"players.json">>])),
        passwd = load_passwords(filename:join([Resources, <<"passwd.json">>])),
-       items = load_items(filename:join([Resources, <<"items.json">>]))
+       items = load_items(filename:join([Resources, <<"items.json">>])),
+       online_players = []
       }.
 
 save_game_data(State) ->
@@ -453,6 +470,21 @@ is_char_alive(Nick, State) ->
 
         Player ->
             0 < prop(<<"health">>, prop(<<"stats">>, Player, []), 0)
+    end.
+
+is_char_online(Nick, State) ->
+    lists:member(Nick, State#state.online_players).
+
+online(Nick, State) ->
+    case is_char_online(Nick, State) of
+        true  -> State;
+        false -> State#state{online_players = [Nick | State#state.online_players]}
+    end.
+
+offline(Nick, State) ->
+    case is_char_online(Nick, State) of
+        true  -> State#state{online_players = State#state.online_players -- [Nick]};
+        false -> State
     end.
 
 validate_nick(Nick) ->

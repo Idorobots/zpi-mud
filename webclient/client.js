@@ -364,6 +364,7 @@ function init() {
 
 	socket.on("hive_error", function (reason) {
 	    console.log("An error occurred: " + reason.error + " - " + reason.description);
+	    alert(reason.description);
 	});
 
 	socket.on("authorize", function (result) {
