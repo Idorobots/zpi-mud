@@ -1,3 +1,5 @@
+var GLOBAL_ID_MAPPING = {};
+
 /**
  *
  *  Secure Hash Algorithm (SHA1)
@@ -181,13 +183,6 @@ function makeChatBox(socket, nick) {
     var text = document.createElement("input");
     text.id = "input-text";
     text.type = "text";
-    var foo = function () {
-    	text.value = "";
-	text.onclick = undefined;
-	text.oninput = undefined;
-    };
-    text.onclick = foo;
-    text.oninput = foo;
     box.appendChild(text);
     
     var send = document.createElement("input");
@@ -328,7 +323,8 @@ function dispatch(socket, nick, text) {
 }
 
 function processArgs(args) {
-    return args.slice(1).join(" ").trim();
+    var arg = args.slice(1).join(" ").trim();
+    return (arg in GLOBAL_ID_MAPPING) ? GLOBAL_ID_MAPPING[arg] : arg;
 }
 
 function sendAction(socket, action, args) {
@@ -464,8 +460,10 @@ function mkPath(path) {
 function addInput(command, text) {
     var input = document.getElementById("input-text");
     if(input !== null) {
-	if(input.value == "")
-	    input.value += command + " ";
+	if(input.value == "") {
+	    input.value += command;
+	    if(command != "") input.value += " ";
+	}
 	input.value += text;
     }
     document.getElementById("input-text").focus();
@@ -511,18 +509,28 @@ function init() {
 		console.log("Authorized!");
 		login.innerHTML = "";
 
+		GLOBAL_ID_MAPPING["you"] = nick;
+		GLOBAL_ID_MAPPING["You"] = nick;
+		GLOBAL_ID_MAPPING["self"] = nick;
+		GLOBAL_ID_MAPPING["myself"] = nick;
+		GLOBAL_ID_MAPPING["me"] = nick;
+
 		socket.on("bad_action", function (description) {
 		    receiveInfo(mkError(description));
 		});
 		
 		socket.on("location_info", function (msg) {
-		    // TODO Add msg.id to the global mapping.
+		    GLOBAL_ID_MAPPING[msg.name] = msg.id;
+		    GLOBAL_ID_MAPPING["around"] = msg.id;
+		    GLOBAL_ID_MAPPING["surroundings"] = msg.id;
+		    
 		    receiveInfo(mkGroup(mkText("You are in "),
 					mkLocation(msg.name),
 					mkText(". " + msg.description)));
 
 		    Object.keys(msg.items).forEach(function (i) {
-			// TODO Add i to the global mapping.
+			GLOBAL_ID_MAPPING[msg.items[i]] = i;
+
 		    	receiveInfo(mkGroup(mkText("You can see "),
 					    mkItem(msg.items[i]),
 					    mkText(" in here...")));
@@ -564,7 +572,8 @@ function init() {
 
 
 		    Object.keys(msg.inventory).forEach(function (i) {
-			// TODO Add i to the global mapping.
+			GLOBAL_ID_MAPPING[msg.inventory[i]] = i;
+
 		    	receiveInfo(mkGroup(mkText("- "),
 					    mkItem(msg.inventory[i])));
 		    });
@@ -599,7 +608,6 @@ function init() {
 		});
 
 		socket.on("battle", function (msg) {
-		    // TODO Add you & You to the global mapping.
 		    var attacker = (msg.attacker == nick) ? "You" : msg.attacker;
 		    var defender = (msg.defender == nick) ? "you" : msg.defender;
 		    
@@ -661,7 +669,7 @@ function init() {
 		});
 
 		makeChatBox(socket, nick);
-		addInput("", "You say...");
+		addInput("", "");
 	    }
 	    else {
 		console.log("Not authorized!");
