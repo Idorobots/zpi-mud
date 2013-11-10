@@ -1,6 +1,6 @@
 body {
-    margin:100px 0px;
-    padding:0px
+    margin: 100px 0px;
+    padding: 0px
 }
 
 #login-box {
@@ -9,5 +9,75 @@ body {
 }
 
 #game-box {
-    text-align: center
+    height: 30em;
+    width: 50em;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#text-box {
+    -moz-appearance: textfield-multiline;
+    -webkit-appearance: textarea;
+    border: 1px solid gray;
+    font: medium -moz-fixed;
+    font: -webkit-small-control;
+    height: 90%;
+    width: 100%;
+    overflow: auto;
+    padding: 2px;
+}
+
+#input-text {
+    width: 90%;
+}
+
+#input-button {
+    width: 10%;
+}
+
+.plain-text {
+    display: inline;
+}
+
+.error-text {
+    display: inline;
+    color: #FF8C00;
+}
+
+.input-text {
+    text-decoration: underline;
+    display: inline;
+}
+
+.character-name {
+    text-decoration: underline;
+    font-weight: bold;
+    display: inline;
+}
+
+.location-name {
+    text-decoration: underline;
+    display: inline;
+}
+
+.location-path {
+    text-decoration: underline;
+    display: inline;
+}
+
+.item-name {
+    text-decoration: underline;
+    display: inline;
+}
+
+.text-info {
+    color: #696969;
+}
+
+.text-input {
+    color: #A9A9A9;
+}
+
+.text-msg {
+    
 }

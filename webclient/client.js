@@ -173,20 +173,14 @@ function SHA1 (msg) {
 }
 
 function makeChatBox(socket, nick) {
-    var box = document.createElement("form");
-    box.id = "chat-box";
+    var textarea = document.createElement("div");
+    textarea.id = "text-box";
 
-    var textarea = document.createElement("textarea");
-    textarea.cols = "100";
-    textarea.rows = "30";
-    textarea.setAttribute("readonly", "readonly");
-    box.appendChild(textarea);
-    box.appendChild(document.createElement("br"))
+    var box = document.createElement("form");
 
     var text = document.createElement("input");
+    text.id = "input-text";
     text.type = "text";
-    text.size = "90";
-    text.value = "You say...";
     var foo = function () {
     	text.value = "";
 	text.onclick = undefined;
@@ -197,6 +191,7 @@ function makeChatBox(socket, nick) {
     box.appendChild(text);
     
     var send = document.createElement("input");
+    send.id = "input-button";
     send.type = "submit";
     send.value = "Send!";
 
@@ -209,34 +204,48 @@ function makeChatBox(socket, nick) {
     box.appendChild(document.createElement("br"))
 
     var gamebox = document.getElementById("game-box");
+    gamebox.appendChild(textarea);
+    gamebox.appendChild(document.createElement("br"))
     gamebox.appendChild(box);
 
-    receiveInfo("Welcome to the ZPI-MUD, " + nick + "... Type \"help\" for help.");
+    receiveInfo(mkGroup(mkText("Welcome to the ZPI-MUD, "),
+			mkCharacter(nick),
+			mkText("... Type "),
+			mkInput("help"),
+			mkText(" for help.")));
     return box;
 }
 
 function dispatch(socket, nick, text) {
+    text = sanitize(text);
     if(text != "") {
         action = text.split(" ");
 	switch (action[0]) {
 	case "help":
-	    receiveInfo("Available commands:");
-	    receiveInfo("move|walk|go|run DESTINATION - onwards you go!");
-	    receiveInfo("examine|look AT - look at something,");
-	    receiveInfo("drop|throw ITEM - drop item from your inventory,");
-	    receiveInfo("take|grab|steal ITEM - put an item in your inventory,");
-	    receiveInfo("inventory - shows your inventory,");
-	    receiveInfo("hit|kick|kill|attack PLAYER - attack somebody,");
-	    receiveInfo("help - displays this message.");
+	    receiveInfo(mkText("Available commands:"));
+	    receiveInfo(mkGroup(mkInput("move|walk|go|run DESTINATION", "move "),
+				mkText(" - onwards you go!")));
+	    receiveInfo(mkGroup(mkInput("examine|look AT", "examine "),
+				mkText(" - look at something,")));
+	    receiveInfo(mkGroup(mkInput("drop|throw ITEM", "drop"),
+				mkText(" - drop item from your inventory,")));
+	    receiveInfo(mkGroup(mkInput("take|grab|steal ITEM", "take "),
+				mkText(" - put an item in your inventory,")));
+	    receiveInfo(mkGroup(mkInput("inventory"),
+				mkText(" - shows your inventory,")));
+	    receiveInfo(mkGroup(mkInput("hit|kick|kill|attack PLAYER", "hit "),
+				mkText(" - attack somebody,")));
+	    receiveInfo(mkGroup(mkInput("help", "help"),
+				mkText(" - displays this message.")));
 	    break;
 
 	case "examine":
-	    sendAction(socket, "examine", action.slice(1).join(" "));
+	    sendAction(socket, "examine", processArgs(action));
     	    receiveInput(text);
 	    break;
 	    
 	case "look":
-	    sendAction(socket, "examine", action.slice(1).join(" "));
+	    sendAction(socket, "examine", processArgs(action));
     	    receiveInput(text);
 	    break;
 
@@ -246,67 +255,67 @@ function dispatch(socket, nick, text) {
 	    break;
 	    
 	case "drop":
-	    sendAction(socket, "drop", action.slice(1).join(" "));
+	    sendAction(socket, "drop", processArgs(action));
     	    receiveInput(text);
 	    break;
 	    
 	case "throw":
-	    sendAction(socket, "drop", action.slice(1).join(" "));
+	    sendAction(socket, "drop", processArgs(action));
     	    receiveInput(text);
 	    break;
 	    
 	case "grab":
-	    sendAction(socket, "take", action.slice(1).join(" "));
+	    sendAction(socket, "take", processArgs(action));
     	    receiveInput(text);
 	    break;
 	    
 	case "take":
-	    sendAction(socket, "take", action.slice(1).join(" "));
+	    sendAction(socket, "take", processArgs(action));
     	    receiveInput(text);
 	    break;
 	    
 	case "steal":
-	    sendAction(socket, "take", action.slice(1).join(" "));
+	    sendAction(socket, "take", processArgs(action));
     	    receiveInput(text);
 	    break;
 	    
 	case "move":
-	    sendAction(socket, "move", action.slice(1).join(" "));
+	    sendAction(socket, "move", processArgs(action));
     	    receiveInput(text);
 	    break;
 
 	case "run":
-	    sendAction(socket, "move", action.slice(1).join(" "));
+	    sendAction(socket, "move", processArgs(action));
     	    receiveInput(text);
 	    break;
 
 	case "walk":
-	    sendAction(socket, "move", action.slice(1).join(" "));
+	    sendAction(socket, "move", processArgs(action));
     	    receiveInput(text);
 	    break;
 
 	case "go":
-	    sendAction(socket, "move", action.slice(1).join(" "));
+	    sendAction(socket, "move", processArgs(action));
     	    receiveInput(text);
 	    break;
 
 	case "attack":
-	    sendAction(socket, "attack", action.slice(1).join(" "));
+	    sendAction(socket, "attack", processArgs(action));
     	    receiveInput(text);
 	    break;
 
 	case "hit":
-	    sendAction(socket, "attack", action.slice(1).join(" "));
+	    sendAction(socket, "attack", processArgs(action));
     	    receiveInput(text);
 	    break;
 
 	case "kick":
-	    sendAction(socket, "attack", action.slice(1).join(" "));
+	    sendAction(socket, "attack", processArgs(action));
     	    receiveInput(text);
 	    break;
 
 	case "kill":
-	    sendAction(socket, "attack", action.slice(1).join(" "));
+	    sendAction(socket, "attack", processArgs(action));
     	    receiveInput(text);
 	    break;
 
@@ -316,6 +325,10 @@ function dispatch(socket, nick, text) {
 	}
         return;
     }
+}
+
+function processArgs(args) {
+    return args.slice(1).join(" ").trim();
 }
 
 function sendAction(socket, action, args) {
@@ -336,32 +349,130 @@ function sendMsg(socket, text) {
 
 function receiveMsg(nick, action, text) {
     console.log("Received a message!");
-    var chatBox = document.getElementById("chat-box");
-    if(chatBox !== null) {
-	var textarea = chatBox.children[0];
-	textarea.value += nick + " " + action + ": " + text + "\n";
-	textarea.scrollTop = textarea.scrollHeight - textarea.clientHeight;
-    }
+    receive(mkNGroup("text-msg",
+		     mkCharacter(nick),
+		     mkText(" " + action + ": "),
+		     mkText(text)));
 }
 
-function receiveInfo(text) {
+function receiveInfo(info) {
     console.log("Received some info!");
-    var chatBox = document.getElementById("chat-box");
-    if(chatBox !== null) {
-	var textarea = chatBox.children[0];
-	textarea.value += "*" + text + "*\n";
+    receive(mkNGroup("text-info", info));
+}
+
+function receiveInput(input) {
+    console.log("Received some input!");
+    receive(mkNGroup("text-input", mkInput(input)));
+}
+
+function receive(text) {
+    var textarea = document.getElementById("text-box");
+    if(textarea !== null) {
+	textarea.appendChild(text);
 	textarea.scrollTop = textarea.scrollHeight - textarea.clientHeight;
     }
 }
 
-function receiveInput(text) {
-    console.log("Received some input!");
-    var chatBox = document.getElementById("chat-box");
-    if(chatBox !== null) {
-	var textarea = chatBox.children[0];
-	textarea.value += "> " + text + "\n";
-	textarea.scrollTop = textarea.scrollHeight - textarea.clientHeight;
+function mkNGroup(className) {
+    var g = mkArrGroup(Array.prototype.slice.apply(arguments).slice(1));
+    g.className = className;
+    return g;
+}
+
+function mkGroup() {
+    return mkArrGroup(Array.prototype.slice.apply(arguments));
+}
+
+function mkArrGroup(stuff) {
+    var g = document.createElement("div");
+    for(i = 0; i < stuff.length; ++i) {
+    	g.appendChild(stuff[i]);
     }
+    return g;
+}
+
+function mkText(text) {
+    var d = document.createElement("div");
+    d.className = "plain-text";
+    d.innerHTML = text;
+    return d;
+}
+
+function mkInput(input) {
+    var toAdd = input;
+    if(arguments.length > 1) toAdd = arguments[1];
+    
+    var i = mkText(input);
+    i.className = "input-text";
+    i.onclick = function () {
+    	addInput("", toAdd);
+    }
+    return i;
+}
+
+function mkError(text) {
+    var d = document.createElement("div");
+    d.className = "error-text";
+    d.innerHTML = text;
+    return d;
+}
+
+function mkCharacter(name) {
+    var c = document.createElement("div");
+    c.className = "character-name";
+    c.innerHTML = name;
+    c.onclick = function() {
+    	addInput("examine", name);
+    };
+
+    return c;
+}
+
+function mkItem(name) {
+    var i = document.createElement("div");
+    i.className = "item-name";
+    i.innerHTML = name;
+    i.onclick = function() {
+    	addInput("examine", name);
+    };
+
+    return i;
+}
+
+function mkLocation(name) {
+    var l = document.createElement("div");
+    l.className = "location-name";
+    l.innerHTML = name;
+    l.onclick = function() {
+    	addInput("examine", name);
+    };
+    
+    return l;
+}
+
+function mkPath(path) {
+    var l = document.createElement("div");
+    l.className = "location-path";
+    l.innerHTML = path;
+    l.onclick = function() {
+    	addInput("go", path);
+    };
+
+    return l;
+}
+
+function addInput(command, text) {
+    var input = document.getElementById("input-text");
+    if(input !== null) {
+	if(input.value == "")
+	    input.value += command + " ";
+	input.value += text;
+    }
+    document.getElementById("input-text").focus();
+}
+
+function sanitize(input) {
+    return input.trim().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
 
 function init() {
@@ -371,9 +482,6 @@ function init() {
     var server = document.getElementById("server-name").value;
     var nick = document.getElementById("login-name").value;
     var pass = document.getElementById("login-pass").value;
-
-    if(pass == "") pass = null;
-    
     var socket = io.connect(server);
 
     document.getElementById("login-button").onclick = function () {
@@ -404,66 +512,85 @@ function init() {
 		login.innerHTML = "";
 
 		socket.on("bad_action", function (description) {
-		    receiveInfo(description);
+		    receiveInfo(mkError(description));
 		});
 		
 		socket.on("location_info", function (msg) {
-		    receiveInfo("You are in " + msg.name + " (" + msg.id + "). " + msg.description);
+		    // TODO Add msg.id to the global mapping.
+		    receiveInfo(mkGroup(mkText("You are in "),
+					mkLocation(msg.name),
+					mkText(". " + msg.description)));
 
 		    Object.keys(msg.items).forEach(function (i) {
-		    	receiveInfo("You can see " + msg.items[i] + " (" + i  + ") in here...");
+			// TODO Add i to the global mapping.
+		    	receiveInfo(mkGroup(mkText("You can see "),
+					    mkItem(msg.items[i]),
+					    mkText(" in here...")));
 		    });
 
 		    msg.players.forEach(function (p) {
 		    	if(p != nick) {
-			    receiveInfo("There's " + p + " in here...");
+			    receiveInfo(mkGroup(mkText("There's "),
+						mkCharacter(p),
+						mkText(" in here...")));
 			}
 		    });
 
 		    Object.keys(msg.locations).forEach(function (l) {
-		    	receiveInfo("You can go " + l + " (" + msg.locations[l] + ")...")
+		    	receiveInfo(mkGroup(mkText("You can go "),
+					    mkPath(l)));
 		    });
 		});
 
 		socket.on("character_info", function (msg) {
 		    if(msg.nick != nick) {
-			receiveInfo("You examine " + msg.nick + ".");
-			receiveInfo("His/her stats:");
+			receiveInfo(mkGroup(mkText("You examine "),
+					    mkCharacter(msg.nick),
+					    mkText(".")));
+			receiveInfo(mkText("His/her stats:"));
 		    } else {
-			receiveInfo("Your stats:");
+			receiveInfo(mkText("Your stats:"));
 		    }
 
 		    Object.keys(msg.stats).forEach(function (s) {
-		    	receiveInfo("- " + s + " - " + msg.stats[s]);
+		    	receiveInfo(mkText("- " + s + " - " + msg.stats[s]));
 		    });
 
 		    if(msg.nick != nick) {
-			receiveInfo("His/her inventory:");
+			receiveInfo(mkText("His/her inventory:"));
 		    } else {
-			receiveInfo("Your inventory:");
+			receiveInfo(mkText("Your inventory:"));
 		    }
 
 
 		    Object.keys(msg.inventory).forEach(function (i) {
-		    	receiveInfo("- " + msg.inventory[i] + " (" + i + ")");
+			// TODO Add i to the global mapping.
+		    	receiveInfo(mkGroup(mkText("- "),
+					    mkItem(msg.inventory[i])));
 		    });
 		});
 
 		socket.on("item_info", function (msg) {
-		    receiveInfo("You examine " + msg.name + " - " + msg.description);
-		    receiveInfo("Its modifiers:");
+		    receiveInfo(mkGroup(mkText("You examine "),
+					mkItem(msg.name),
+					mkText(" - " + msg.description)));
+		    receiveInfo(mkText("Its modifiers:"));
 
 		    Object.keys(msg.modifiers).forEach(function (s) {
 			var mod = msg.modifiers[s];
-		    	receiveInfo(s + " - " + (mod > 0 ? "+" + mod : mod));
+		    	receiveInfo(mkText(s + " - " + (mod > 0 ? "+" + mod : mod)));
 		    });
 		});
 
 		socket.on("inventory_update", function (msg) {
 		    if(msg.type == "take") {
-			receiveInfo("You pick up " + msg.name + ".");
+			receiveInfo(mkGroup(mkText("You pick up "),
+					    mkItem(msg.name),
+					    mkText(".")));
 		    } else {
-			receiveInfo("You drop " + msg.name + ".");
+			receiveInfo(mkGroup(mkText("You drop "),
+					    mkItem(msg.name),
+					    mkText(".")));
 		    }
 		});
 
@@ -472,44 +599,69 @@ function init() {
 		});
 
 		socket.on("battle", function (msg) {
+		    // TODO Add you & You to the global mapping.
 		    var attacker = (msg.attacker == nick) ? "You" : msg.attacker;
 		    var defender = (msg.defender == nick) ? "you" : msg.defender;
 		    
 		    switch(msg.type) {
 		    case "hit":
-		    	receiveInfo(attacker + " smacked " + defender + " for " + msg.value + " damage!");
+		    	receiveInfo(mkGroup(mkCharacter(attacker),
+					    mkText(" smacked "),
+					    mkCharacter(defender),
+					    mkText(" for " + msg.value + " damage!")));
 			break;
 
 		    case "miss":
-		    	receiveInfo(attacker + " missed " + defender + "!");
+		    	receiveInfo(mkGroup(mkCharacter(attacker),
+					    mkText(" missed "),
+					    mkCharacter(defender),
+					    mkText("!")));
 			break;
 
 		    case "kill":
-			receiveInfo(attacker + " smacked " + defender + " for " + msg.value + " damage!");
-			receiveInfo(attacker + " killed " + defender + "!");
+			receiveInfo(mkGroup(mkCharacter(attacker),
+					    mkText(" smacked "),
+					    mkCharacter(defender),
+					    mkText(" for " + msg.value + " damage!")));
+			receiveInfo(mkGroup(mkCharacter(attacker),
+					    mkText(" killed "),
+					    mkCharacter(defender),
+					    mkText("!")));
 			break;
 		    }
 		});
 		
 		socket.on("player_enters", function (msg) {
 		    if(msg.nick != nick) {
-	    		receiveInfo(msg.nick + " entered " + msg.location + "...");
+	    		receiveInfo(mkGroup(mkCharacter(msg.nick),
+					    mkText(" entered "),
+					    mkLocation(msg.location),
+					    mkText("...")));
 		    }
 		    else {
-			receiveInfo("You enter " + msg.location + "...");
+			receiveInfo(mkGroup(mkText("You enter "),
+					    mkLocation(msg.location),
+					    mkText("...")));
 		    }
 		});
 
 		socket.on("player_leaves", function (msg) {
 	    	    if(msg.nick != nick) {
-			receiveInfo(msg.nick + " left " + msg.location + "...");
+			receiveInfo(mkGroup(mkCharacter(msg.nick),
+					    mkText(" left "),
+					    mkLocation(msg.location),
+					    mkText("...")));
+			
 		    }
 		    else {
-		    	receiveInfo("You leave " + msg.location + "...");
+		    	receiveInfo(mkGroup(mkText("You leave "),
+					    mkLocation(msg.location),
+					    mkText("...")));
 		    }
 		});
 
-		makeChatBox(socket, nick).children[2].focus();
+		makeChatBox(socket, nick);
+		addInput("", "You say...");
 	    }
 	    else {
 		console.log("Not authorized!");

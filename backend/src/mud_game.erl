@@ -489,7 +489,14 @@ offline(Nick, State) ->
 
 validate_nick(Nick) ->
     byte_size(Nick) < mud:get_env(max_allowed_nick_len)
-        andalso byte_size(Nick) > mud:get_env(min_allowed_nick_len).
+        andalso byte_size(Nick) > mud:get_env(min_allowed_nick_len)
+        andalso valid_chars(Nick).
+
+valid_chars(Nick) ->
+    case binary:match(Nick, [<<"<">>, <<">">>], []) of
+        nomatch -> true;
+        _       -> false
+    end.
 
 object_by_id(_Nick, LocationID, LocationID, State) ->
     {location, prop(LocationID, State#state.locations), LocationID};
