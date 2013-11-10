@@ -1,13 +1,96 @@
+html {
+    background: #8B4513 url('killingtheioagain.png')  no-repeat bottom center;
+}
+
 body {
-    margin:100px 0px;
-    padding:0px
+    display: table;
+    margin: 0 auto;
+    height: 100%;
+}
+
+#wrapper {
+    display: table-cell;
+    vertical-align: middle;
 }
 
 #login-box {
-    vertical-align: middle;
-    text-align: center
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #game-box {
-    text-align: center
+    margin-left: auto;
+    margin-right: auto;
+    width: 50em;
+    height: 30em;
+}
+
+#text-box {
+    background-color: #FFDAB9;
+    -moz-appearance: textfield-multiline;
+    -webkit-appearance: textarea;
+    border: 1px solid gray;
+    font: medium -moz-fixed;
+    font: -webkit-small-control;
+    overflow: auto;
+    padding: 2px;
+    width: 100%;
+    height: 90%;
+}
+
+#input-text {
+    background-color: #FFDAB9;
+    width: 90%;
+}
+
+#input-button {
+    width: 10%;
+}
+
+.plain-text {
+    display: inline;
+}
+
+.error-text {
+    display: inline;
+    color: #FF8C00;
+}
+
+.input-text {
+    text-decoration: underline;
+    display: inline;
+}
+
+.character-name {
+    text-decoration: underline;
+    font-weight: bold;
+    display: inline;
+}
+
+.location-name {
+    text-decoration: underline;
+    display: inline;
+}
+
+.location-path {
+    text-decoration: underline;
+    display: inline;
+}
+
+.item-name {
+    text-decoration: underline;
+    display: inline;
+}
+
+.text-info {
+    color: #696969;
+}
+
+.text-input {
+    color: #A9A9A9;
+}
+
+.text-msg {
+    
 }
