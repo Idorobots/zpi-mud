@@ -55,7 +55,10 @@ class Main {
 
                     @Override
                     public void on(String event, IOAcknowledge ack, Object... args) {
-                        System.out.println("Received an event: '" + event + "'");
+                         System.out.println("Received an event: '" + event + "'");
+                        
+                        String textToDisplay = DisplayHelper.displayEvent(event, ack, args);
+                        System.out.println(textToDisplay);
                     }
                 });
 
