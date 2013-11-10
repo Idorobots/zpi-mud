@@ -1,33 +1,46 @@
+html {
+    background: #8B4513 url('killingtheioagain.png')  no-repeat bottom center;
+}
+
 body {
-    margin: 100px 0px;
-    padding: 0px
+    display: table;
+    margin: 0 auto;
+    height: 100%;
+}
+
+#wrapper {
+    display: table-cell;
+    vertical-align: middle;
 }
 
 #login-box {
-    vertical-align: middle;
-    text-align: center
-}
-
-#game-box {
-    height: 30em;
-    width: 50em;
+    text-align: center;
     margin-left: auto;
     margin-right: auto;
 }
 
+#game-box {
+    margin-left: auto;
+    margin-right: auto;
+    width: 50em;
+    height: 30em;
+}
+
 #text-box {
+    background-color: #FFDAB9;
     -moz-appearance: textfield-multiline;
     -webkit-appearance: textarea;
     border: 1px solid gray;
     font: medium -moz-fixed;
     font: -webkit-small-control;
-    height: 90%;
-    width: 100%;
     overflow: auto;
     padding: 2px;
+    width: 100%;
+    height: 90%;
 }
 
 #input-text {
+    background-color: #FFDAB9;
     width: 90%;
 }
 

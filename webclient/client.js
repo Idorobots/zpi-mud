@@ -1,3 +1,4 @@
+// @author: kajtek@idorobots.org
 var GLOBAL_ID_MAPPING = {};
 
 /**
@@ -202,6 +203,7 @@ function makeChatBox(socket, nick) {
     gamebox.appendChild(textarea);
     gamebox.appendChild(document.createElement("br"))
     gamebox.appendChild(box);
+    gamebox.style.display = "";
 
     receiveInfo(mkGroup(mkText("Welcome to the ZPI-MUD, "),
 			mkCharacter(nick),
@@ -507,8 +509,8 @@ function init() {
 	socket.on("authorize", function (result) {
     	    if (result.permission == "granted") {
 		console.log("Authorized!");
-		login.innerHTML = "";
-
+		login.style.display = "none";
+		
 		GLOBAL_ID_MAPPING["you"] = nick;
 		GLOBAL_ID_MAPPING["You"] = nick;
 		GLOBAL_ID_MAPPING["self"] = nick;
@@ -681,3 +683,6 @@ function init() {
     });
 }
 
+function preinit() {
+    document.getElementById("game-box").style.display = "none";
+}
