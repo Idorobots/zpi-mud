@@ -1,7 +1,7 @@
 -module(mud_utils).
 -export([publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -export([mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
--export([json_to_file/2, mk_event/2, str_join/2, str_cat/2]).
+-export([json_to_file/2, mk_event/2, str_join/2, str_cat/2, data/1, data/2]).
 
 %% Util functions:
 publish(Channel, Message) ->
@@ -27,6 +27,14 @@ trigger(Data) ->
 
 state(Data) ->
     proplists:get_value(<<"state">>, Data).
+
+data(State) ->
+    data(null, State).
+
+data(Trigger, State) ->
+    [{<<"sid">>, <<"">>},
+     {<<"trigger">>, Trigger},
+     {<<"state">>, State}].
 
 file_to_json(File) ->
     case file:read_file(File) of
@@ -77,6 +85,18 @@ mk_event(Event, Args) ->
     [{<<"name">>, Event},
      {<<"args">>, Args}].
 
+str_join(_Separatr, []) ->
+    <<>>;
+
+str_join(_Separator, [String]) ->
+    String;
+
+str_join(Separator, [String | Strings]) ->
+    str_cat(String, str_cat(Separator, str_join(Separator, Strings))).
+
+str_cat(A, B) ->
+    <<A/binary, B/binary>>.
+
 %% Internal functions:
 api_call(Method, Path, Data) ->
     ApiUrl = mud:get_env(hive_url),
@@ -89,15 +109,3 @@ api_call(Method, Path, Data) ->
     Body = jsonx:encode(Data),
     lager:info("Sending API request ~p to ~p, body: ~p", [Method, URL, Body]),
     ibrowse:send_req(binary_to_list(URL), [], Method, Body).
-
-str_join(_Separatr, []) ->
-    <<>>;
-
-str_join(_Separator, [String]) ->
-    String;
-
-str_join(Separator, [String | Strings]) ->
-    str_cat(String, str_cat(Separator, str_join(Separator, Strings))).
-
-str_cat(A, B) ->
-    <<A/binary, B/binary>>.

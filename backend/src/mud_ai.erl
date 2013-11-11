@@ -5,7 +5,7 @@
 -export([code_change/4, handle_event/3, handle_sync_event/4, handle_info/3]).
 -export([transient/2, friendly/2, neutral/2, hostile/2]).
 
--import(mud_utils, [prop/2, mk_event/2, str_cat/2]).
+-import(mud_utils, [prop/2, mk_event/2, str_cat/2, data/2, data/1]).
 
 -include("mud_ai.hrl").
 
@@ -21,6 +21,7 @@ init({Nick, NPC}) ->
     gen_fsm:send_event(self(), {authorize, Nick, Password, Location}),
     {ok, transient, #state{
                        handler = Handler,
+                       nick = Nick,
                        target = <<"">>,
                        state = [{<<"nick">>, Nick},
                                 {<<"location">>, Location},
@@ -28,7 +29,7 @@ init({Nick, NPC}) ->
                       }}.
 
 terminate(_Reason, _StateName, State) ->
-    mud_game:cleanup(data(State)).
+    mud_game:cleanup(data(State#state.state)).
 
 %% Gen FSM handlers:
 handle_event(_Event, StateName, State) ->
@@ -37,8 +38,10 @@ handle_event(_Event, StateName, State) ->
 handle_sync_event(_Event, _From, StateName, State) ->
     {next_state, StateName, State}.
 
-handle_info(_Info, StateName, State) ->
-    {next_state, StateName, State}.
+handle_info(Info, StateName, State) ->
+    Handler = State#state.handler,
+    {ok, NewStateName, NewState} = Handler:on_info(Info, StateName, State),
+    {next_state, NewStateName, NewState}.
 
 code_change(_Vsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
@@ -50,7 +53,7 @@ transient({authorize, Nick, Password, Location}, State) ->
                       {<<"password">>, Password}]]),
     %% NOTE We'll spoof the Hive client for a bit...
     ok = hive_pubsub:join([str_cat(mud:get_env(channel_prefix), Location)]),
-    {ok, _Reply} = mud_game:authorize(data(Auth, State)),
+    {ok, _Reply} = mud_game:authorize(data(Auth, State#state.state)),
     Handler = State#state.handler,
     {ok, StateName, NewState} = Handler:init(State),
     {next_state, StateName, NewState};
@@ -84,14 +87,6 @@ hostile({dispatch_events, Event}, State) ->
     {next_state, StateName, NewState}.
 
 %% Internal functions:
-data(State) ->
-    data(null, State).
-
-data(Trigger, State) ->
-    [{<<"sid">>, <<"">>},
-     {<<"trigger">>, Trigger},
-     {<<"state">>, State#state.state}].
-
 get_handler(Type) ->
     known_type(list_to_atom(binary_to_list(Type))).
 
