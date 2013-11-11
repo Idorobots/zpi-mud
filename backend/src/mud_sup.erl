@@ -11,7 +11,7 @@ start_link() ->
 init([]) ->
     Strategy = {one_for_one, 5, 3600},
     Processes = [{mud_game,
-                  {mud_game, start_link, []},
+                  {mud_game, start_link, [self()]},
                   temporary,
                   5000,
                   worker,

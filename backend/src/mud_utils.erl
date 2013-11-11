@@ -1,14 +1,20 @@
 -module(mud_utils).
 -export([publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -export([mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
--export([json_to_file/2]).
+-export([json_to_file/2, mk_event/2, str_join/2, str_cat/2]).
 
 %% Util functions:
 publish(Channel, Message) ->
     api_call(post, [<<"pubsub/publish/">>, mud:get_env(channel_prefix) , Channel], Message).
 
+subscribe(<<"">>, _Channel) ->
+    ok;
+
 subscribe(Sid, Channel) ->
     api_call(post, [<<"pubsub/subscribe/">>, Sid], [str_cat(mud:get_env(channel_prefix), Channel)]).
+
+unsubscribe(<<"">>, _Channel) ->
+    ok;
 
 unsubscribe(Sid, Channel) ->
     api_call(delete, [<<"pubsub/subscribe/">>, Sid], [str_cat(mud:get_env(channel_prefix), Channel)]).
@@ -56,17 +62,20 @@ remove(Name, [Value | Rest]) ->
     [Value | remove(Name, Rest)].
 
 mk_error(Error) ->
-    [{action, <<"error">>},
-     {args, Error}].
+    [{<<"action">>, <<"error">>},
+     {<<"args">>, Error}].
 
 mk_reply(Event, Args) ->
-    [{action, <<"reply">>},
-     {args, [{name, Event},
-             {args, Args}]}].
+    [{<<"action">>, <<"reply">>},
+     {<<"args">>, mk_event(Event, Args)}].
 
 mk_store(State) ->
-    [{action, <<"store">>},
-     {args, State}].
+    [{<<"action">>, <<"store">>},
+     {<<"args">>, State}].
+
+mk_event(Event, Args) ->
+    [{<<"name">>, Event},
+     {<<"args">>, Args}].
 
 %% Internal functions:
 api_call(Method, Path, Data) ->

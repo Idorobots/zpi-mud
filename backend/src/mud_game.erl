@@ -1,13 +1,14 @@
 -module(mud_game).
 -behaviour(gen_server).
 
--export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([start_link/1, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([authorize/1, say/1, do/1, cleanup/1]).
 
 -import(mud_utils, [json_to_file/2, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
 
 -record(state, {
+          ai_supervisor = undefined,
           online_players = [],
           locations = [],
           players = [],
@@ -17,16 +18,18 @@
 
 %% This is a tiny wrapper that makes restarts of various Hive HTTP servers predictable and well-behaved.
 %% Gen server callbacks:
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link(Supervisor) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, Supervisor, []).
 
-init([]) ->
+init(Supervisor) ->
     lager:notice("Starting MUD Game..."),
     random:seed(now()),
+    erlang:start_timer(mud:get_env(npc_spawn_timeout), ?MODULE, {spawn_ai_sup, Supervisor}),
     erlang:start_timer(mud:get_env(save_timeout), self(), save_state),
     {ok, load_game_data()}.
 
-terminate(_Reason, _State) ->
+terminate(Reason, _State) ->
+    lager:notice("Stopping MUD Game: ~p", [Reason]),
     ok.
 
 %% Game API:
@@ -247,7 +250,7 @@ handle_call({exec_command, <<"attack">>, Target, _Sid, PlayerState}, _From, Stat
                                                 players = remove(EnemyNick, State#state.players),
                                                 passwd = remove(EnemyNick, State#state.passwd)
                                                }),
-                    {reply, {ok, mk_store([{<<"first_blood">>, true}])}, NewState};
+                    {reply, {ok, mk_store([{<<"nick">>, Nick}])}, NewState};
 
                 {hit, Value, NewEnemyStats} ->
                     publish(LocationID, [{<<"name">>, <<"battle">>},
@@ -260,14 +263,14 @@ handle_call({exec_command, <<"attack">>, Target, _Sid, PlayerState}, _From, Stat
                                                   update(<<"stats">>, NewEnemyStats, Enemy),
                                                   State#state.players)
                                 },
-                    {reply, {ok, mk_store([{<<"first_blood">>, true}])}, NewState};
+                    {reply, {ok, mk_store([{<<"nick">>, Nick}])}, NewState};
 
                 {miss, EnemyStats} ->
                     publish(LocationID, [{<<"name">>, <<"battle">>},
                                          {<<"args">>, [[{<<"attacker">>, Nick},
                                                         {<<"defender">>, EnemyNick},
                                                         {<<"type">>, <<"miss">>}]]}]),
-                    {reply, {ok, mk_store([{<<"first_blood">>, true}])}, State}
+                    {reply, {ok, mk_store([{<<"nick">>, Nick}])}, State}
             end;
 
         _Otherwise ->
@@ -302,9 +305,10 @@ handle_cast({cleanup, Sid, PlayerState}, State) ->
         true ->
             Passwd = prop(Nick, State#state.passwd),
             LocationID = prop(<<"location">>, PlayerState),
+            Password = prop(<<"password">>, Passwd),
             NewState = State#state{
                          passwd = update(Nick,
-                                         update(<<"location">>, LocationID, Passwd),
+                                         update(<<"password">>, Password, PlayerState),
                                          State#state.passwd)
                         },
             {noreply, offline(Nick, leave(Nick, Sid, LocationID, NewState))};
@@ -315,6 +319,29 @@ handle_cast({cleanup, Sid, PlayerState}, State) ->
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
+
+handle_info({timeout, _TRef, {spawn_ai_sup, Supervisor}}, State) ->
+    lager:notice("Starting MUD AI server..."),
+    case supervisor:start_child(Supervisor, {mud_ai_sup,
+                                             {mud_ai_sup, start_link, []},
+                                             permanent,
+                                             infinity,
+                                             supervisor,
+                                             [mud_ai_sup]})
+    of
+        {ok, Pid} ->
+            lager:notice("Loading NPCs..."),
+            ok = spawn_npcs(Pid, State#state.passwd),
+            {noreply, State#state{ai_supervisor = Pid}};
+
+        {error, {already_started, Pid}} ->
+            lager:notice("Loading NPCs..."),
+            ok = spawn_npcs(Pid, State#state.passwd),
+            {noreply, State#state{ai_supervisor = Pid}};
+
+        _ ->
+            {stop, shutdown, State}
+    end;
 
 handle_info({timeout, _TRef, save_state}, State) ->
     save_game_data(State),
@@ -374,6 +401,22 @@ save_items(File, Data) ->
 extractor(Field) ->
     fun(JSON) ->
             {proplists:get_value(Field, JSON), JSON}
+    end.
+
+spawn_npcs(_AISup, []) ->
+    ok;
+
+spawn_npcs(AISup, [{Nick, Character} | Characters]) ->
+    case prop(<<"npc">>, Character, false) of
+        false ->
+            spawn_npcs(AISup, Characters);
+
+        _ ->
+            lager:info("Spawning NPC ~s...", [Nick]),
+            case supervisor:start_child(AISup, [Nick, Character]) of
+                {ok, _Pid} -> spawn_npcs(AISup, Characters);
+                _          -> error
+            end
     end.
 
 join(Nick, Sid, LocationID, State) ->
