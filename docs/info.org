@@ -344,6 +344,7 @@ Przykład:
   {
       "name" : "inventory_update",
       "args" : {
+          "nick" : nazwa_gracza,
           "type" : typ_aktualizacji,
           "id" : id_przedmiotu,
           "name" : nazwa_przedmiotu
@@ -352,7 +353,7 @@ Przykład:
 #+end_src
 
 #+latex: \noindent
-Więcej o przedmiotach [[ref:item][tutaj]].
+Event taki otrzymamy także w wyniku akcji innego gracza znajdującego się w tej samej lokalizacji. Więcej o przedmiotach [[ref:item][tutaj]].
 
 * Reprezentacja świata gry
 Poniższe sekcje zawierają opisy różnych obiektów świata gry, które mogą się zmieniać w trakcie gry w reakcji na akcje graczy.

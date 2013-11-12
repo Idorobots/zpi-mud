@@ -6,6 +6,7 @@
 
 -import(mud_utils, [json_to_file/2, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
+-import(mud_utils, [mk_event/2]).
 
 -record(state, {
           ai_supervisor = undefined,
@@ -175,10 +176,6 @@ handle_call({exec_command, <<"take">>, ID, _Sid, PlayerState}, _From, State) ->
             Name = prop(<<"name">>, Item),
             Modifiers = prop(<<"modifiers">>, Item),
             NewStats = apply_item(Modifiers, Stats),
-            Reply = mk_reply(<<"inventory_update">>,
-                             [{<<"type">>, <<"take">>},
-                              {<<"id">>, ID},
-                              {<<"name">>, Name}]),
             NewState = State#state{
                          locations = update(LocationID,
                                             update(<<"items">>, remove(ID, Items), Location),
@@ -189,7 +186,12 @@ handle_call({exec_command, <<"take">>, ID, _Sid, PlayerState}, _From, State) ->
                                                  update(<<"stats">>, NewStats, Player)),
                                           State#state.players)
                         },
-            {reply, {ok, Reply}, NewState};
+            publish(LocationID, mk_event(<<"inventory_update">>,
+                                         [{<<"nick">>, Nick},
+                                          {<<"type">>, <<"take">>},
+                                          {<<"id">>, ID},
+                                          {<<"name">>, Name}])),
+            {reply, {ok, mk_store([{<<"nick">>, Nick}])}, NewState};
 
         _Otherwise ->
             {reply, {ok, mk_reply(<<"bad_action">>, [<<"You can't take that!">>])}, State}
@@ -208,10 +210,6 @@ handle_call({exec_command, <<"drop">>, ID, _Sid, PlayerState}, _From, State) ->
             Name = prop(<<"name">>, Item),
             Modifiers = prop(<<"modifiers">>, Item),
             NewStats = unapply_item(Modifiers, Stats),
-            Reply = mk_reply(<<"inventory_update">>,
-                             [{<<"type">>, <<"drop">>},
-                              {<<"id">>, ID},
-                              {<<"name">>, Name}]),
             NewState = State#state{
                          locations = update(LocationID,
                                             update(<<"items">>, update(ID, Name, Items), Location),
@@ -222,7 +220,12 @@ handle_call({exec_command, <<"drop">>, ID, _Sid, PlayerState}, _From, State) ->
                                                  update(<<"stats">>, NewStats, Player)),
                                           State#state.players)
                         },
-            {reply, {ok, Reply}, NewState};
+            publish(LocationID, mk_event(<<"inventory_update">>,
+                                         [{<<"nick">>, Nick},
+                                          {<<"type">>, <<"drop">>},
+                                          {<<"id">>, ID},
+                                          {<<"name">>, Name}])),
+            {reply, {ok, mk_store([{<<"nick">>, Nick}])}, NewState};
 
         _Otherwise ->
             {reply, {ok, mk_reply(<<"bad_action">>, [<<"You don't have that!">>])}, State}
@@ -239,25 +242,25 @@ handle_call({exec_command, <<"attack">>, Target, _Sid, PlayerState}, _From, Stat
             EnemyStats = prop(<<"stats">>, Enemy),
             case battle(PlayerStats, EnemyStats) of
                 {kill, Value} ->
-                    publish(LocationID, [{<<"name">>, <<"battle">>},
-                                         {<<"args">>, [[{<<"attacker">>, Nick},
-                                                        {<<"defender">>, EnemyNick},
-                                                        {<<"type">>, <<"kill">>},
-                                                        {<<"value">>, Value}]]}]),
                     NewState = kill_character(Enemy,
                                               LocationID,
                                               State#state{
                                                 players = remove(EnemyNick, State#state.players),
                                                 passwd = remove(EnemyNick, State#state.passwd)
                                                }),
+                    publish(LocationID, mk_event(<<"battle">>,
+                                                 [[{<<"attacker">>, Nick},
+                                                   {<<"defender">>, EnemyNick},
+                                                   {<<"type">>, <<"kill">>},
+                                                   {<<"value">>, Value}]])),
                     {reply, {ok, mk_store([{<<"nick">>, Nick}])}, NewState};
 
                 {hit, Value, NewEnemyStats} ->
-                    publish(LocationID, [{<<"name">>, <<"battle">>},
-                                         {<<"args">>, [[{<<"attacker">>, Nick},
-                                                        {<<"defender">>, EnemyNick},
-                                                        {<<"type">>, <<"hit">>},
-                                                        {<<"value">>, Value}]]}]),
+                    publish(LocationID, mk_event(<<"battle">>,
+                                                 [[{<<"attacker">>, Nick},
+                                                   {<<"defender">>, EnemyNick},
+                                                   {<<"type">>, <<"hit">>},
+                                                   {<<"value">>, Value}]])),
                     NewState = State#state{
                                  players = update(EnemyNick,
                                                   update(<<"stats">>, NewEnemyStats, Enemy),
@@ -266,10 +269,10 @@ handle_call({exec_command, <<"attack">>, Target, _Sid, PlayerState}, _From, Stat
                     {reply, {ok, mk_store([{<<"nick">>, Nick}])}, NewState};
 
                 {miss, EnemyStats} ->
-                    publish(LocationID, [{<<"name">>, <<"battle">>},
-                                         {<<"args">>, [[{<<"attacker">>, Nick},
-                                                        {<<"defender">>, EnemyNick},
-                                                        {<<"type">>, <<"miss">>}]]}]),
+                    publish(LocationID, mk_event(<<"battle">>,
+                                                 [[{<<"attacker">>, Nick},
+                                                   {<<"defender">>, EnemyNick},
+                                                   {<<"type">>, <<"miss">>}]])),
                     {reply, {ok, mk_store([{<<"nick">>, Nick}])}, State}
             end;
 
@@ -288,10 +291,10 @@ handle_cast({say, Type, Text, PlayerState}, State) ->
     case is_char_alive(Nick, State) of
         true ->
             LocationID = prop(<<"location">>, PlayerState),
-            publish(LocationID, [{<<"name">>, <<"msg">>},
-                                 {<<"args">>, [[{<<"nick">>, Nick},
-                                                {<<"type">>, Type},
-                                                {<<"text">>, Text}]]}]),
+            publish(LocationID, mk_event(<<"msg">>,
+                                         [[{<<"nick">>, Nick},
+                                           {<<"type">>, Type},
+                                           {<<"text">>, Text}]])),
             {noreply, State};
 
         false ->
@@ -423,9 +426,9 @@ join(Nick, Sid, LocationID, State) ->
     Location = prop(LocationID, State#state.locations),
     Players = [Nick | prop(<<"players">>, Location)],
     subscribe(Sid, LocationID),
-    publish(LocationID, [{<<"name">>, <<"player_enters">>},
-                         {<<"args">>, [[{<<"location">>, prop(<<"name">>, Location)},
-                                        {<<"nick">>, Nick}]]}]),
+    publish(LocationID, mk_event(<<"player_enters">>,
+                                 [[{<<"location">>, prop(<<"name">>, Location)},
+                                   {<<"nick">>, Nick}]] )),
     State#state{
       locations = update(LocationID,
                          update(<<"players">>, Players, Location),
@@ -436,9 +439,9 @@ leave(Nick, Sid, LocationID, State) ->
     Location = prop(LocationID, State#state.locations),
     Players = prop(<<"players">>, Location) -- [Nick],
     unsubscribe(Sid, LocationID),
-    publish(LocationID, [{<<"name">>, <<"player_leaves">>},
-                         {<<"args">>, [[{<<"location">>, prop(<<"name">>, Location)},
-                                        {<<"nick">>, Nick}]]}]),
+    publish(LocationID, mk_event(<<"player_leaves">>,
+                                 [[{<<"location">>, prop(<<"name">>, Location)},
+                                   {<<"nick">>, Nick}]])),
     State#state{
       locations = update(LocationID,
                          update(<<"players">>, Players, Location),
@@ -498,10 +501,19 @@ new_character(Nick) ->
 kill_character(Player, LocationID, State) ->
     Nick = prop(<<"nick">>, Player),
     Location = prop(LocationID, State#state.locations),
-    Items = prop(<<"inventory">>, Player) ++ prop(<<"items">>, Location),
+    Inventory = prop(<<"inventory">>, Player),
+    Items = Inventory ++ prop(<<"items">>, Location),
     Players = prop(<<"players">>, Location) -- [Nick],
     NewLocation = update(<<"players">>, Players, Location),
     NewestLocation = update(<<"items">>, Items, NewLocation),
+    lists:map(fun({ID, Name}) ->
+                      publish(LocationID, mk_event(<<"inventory_update">>,
+                                                   [{<<"nick">>, Nick},
+                                                    {<<"type">>, <<"drop">>},
+                                                    {<<"id">>, ID},
+                                                    {<<"name">>, Name}]))
+              end,
+              Inventory),
     State#state{
       locations = update(LocationID, NewestLocation, State#state.locations)
      }.

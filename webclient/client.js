@@ -594,12 +594,19 @@ function init() {
 		});
 
 		socket.on("inventory_update", function (msg) {
+		    var who = msg.nick;
+		    if(who == nick) who = "You";
+
+		    GLOBAL_ID_MAPPING[msg.name] = msg.id;
+		    
 		    if(msg.type == "take") {
-			receiveInfo(mkGroup(mkText("You pick up "),
+			receiveInfo(mkGroup(mkCharacter(who),
+					    mkText(" picked up "),
 					    mkItem(msg.name),
 					    mkText(".")));
 		    } else {
-			receiveInfo(mkGroup(mkText("You drop "),
+			receiveInfo(mkGroup(mkCharacter(who),
+					    mkText(" dropped "),
 					    mkItem(msg.name),
 					    mkText(".")));
 		    }
