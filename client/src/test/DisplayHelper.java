@@ -10,8 +10,13 @@ import org.json.JSONObject;
 
 public class DisplayHelper {
 
+	//todo: if there's time - use StringUtils for string operations.
+	private String playerName ;
+	
 	// returns a text to display in the chatwindow
-	public static String displayEvent(String event, IOAcknowledge ack, Object... args){
+	public static String displayEvent(String playerName, String event, IOAcknowledge ack, Object... args){
+		playerName = playerName; 
+
 		String text="";
 		
 		JSONObject json = (JSONObject) args[0];
@@ -21,7 +26,16 @@ public class DisplayHelper {
 	        	String name = json.getString("nick");
 	        	String type = json.getString("type");
 	        	String text_msg = json.getString("text");
-	        	text = name+ " "+type+": "+text_msg;
+
+	        	if (name.equals(playerName)){
+	        		//the current players typed a message:
+	        		text =  "You" + type.substring(0, type.length()-2)+": "+text_msg;
+	        	}
+	        	else{
+	        		//someone else said something
+		        	text = name+ " "+type+": "+text_msg;
+
+	        	}
 	        	
 	        }
 			
@@ -30,24 +44,47 @@ public class DisplayHelper {
 
 				text+= des;
 			}
+			
 			if(event.equals("character_info")){
 				//todo: add examinig different people
 	        	String nick = json.getString("nick");
 	        	
-	        	text = "Your stats "+nick+": ";
-	        	JSONObject stats = json.getJSONObject("stats");
-	        	JSONArray jsonarray = stats.names();
-	        	
-	        	text +="\n";
-	        	for(int i=0; i<jsonarray.length(); i++ ){
-	    			text +="-";
-	    			String key = jsonarray.getString(i);
-	    			String value = stats.getString(key);
-		    			text += key +"-" + value+"-\n";
-	    		
-	    		}
+	        	if(nick.equals(playerName)){
+	        		//it's you
+		        	text = "Your stats "+nick+": ";
+		        	JSONObject stats = json.getJSONObject("stats");
+		        	JSONArray jsonarray = stats.names();
+		        	
+		        	text +="\n";
+		        	for(int i=0; i<jsonarray.length(); i++ ){
+		    			text +="-";
+		    			String key = jsonarray.getString(i);
+		    			String value = stats.getString(key);
+			    			text += key +"-" + value+"-\n";
+		    		
+		    		}
+		        	
+		        	text += "Your inventory ";
+		        	
+	        	}
+	        	else{
+	        		//it's a different player. 
+	        		text += nick +"'s stats: ";
+	        		JSONObject stats = json.getJSONObject("stats");
+		        	JSONArray jsonarray = stats.names();
+		        	
+		        	text +="\n";
+		        	for(int i=0; i<jsonarray.length(); i++ ){
+		    			text +="-";
+		    			String key = jsonarray.getString(i);
+		    			String value = stats.getString(key);
+			    			text += key +"-" + value+"-\n";
+		    		
+		    		}
+		        	
+		        	text += "His/her inventory ";
+	        	}
 	    	
-	        	//todo: check if it's not this player.
 	            String inv = json.getString("inventory");
 	            inv = inv.replace("\"", "");
 	            inv= inv.replace("[", "");
@@ -56,20 +93,22 @@ public class DisplayHelper {
 	            
 	    		String [] inventory = inv.split(",");
 	    		if(inventory.length==1){
-	    			text += "Inventory is empty.\n";
+	    			text += "is empty.\n";
 	    		}
 	    		else{
-		        	text+="Inventory: \n";
+		        	text+=": \n";
 		        	int i=1;
 		    		for(String s: inventory){
-			
+		    			 text+= s +", ";
 		    		}
 	    		}
-	    		
+	    		//todo: better formatting
 
 
 	    		   
 	        }
+			
+			
 			if(event.equals("location_info")){
 	        	String name = json.getString("name");
 	        	String id = json.getString("id");
@@ -80,8 +119,6 @@ public class DisplayHelper {
 	        	JSONObject items = json.getJSONObject("items");
 	        	JSONArray jsonarray = items.names();
 	        	
-	    		HashMap<String, String> mappedItems = new HashMap<String, String>();
-
 	    		
 	    		for(int i=0; i<jsonarray.length(); i++ ){
 	    			text +="*You can see ";
@@ -91,7 +128,6 @@ public class DisplayHelper {
 	    		
 	    		}
 	        	
-	        	//todo: check if it's not this player.
 	            String players = json.getString("players");
 	            players = players.replace("\"", "");
 	            players= players.replace("[", "");
@@ -100,16 +136,19 @@ public class DisplayHelper {
 	            
 	    		String [] listedplayers = players.split(",");
 	    		for(String s: listedplayers){
-	    			text += "*There's ";
-	    			text += s;
-	    			text +=" in here*\n";
+		        	//todo: check if it's not this player.
+
+	    			if(!s.equals(playerName)){
+		    			text += "*There's ";
+		    			text += s;
+		    			text +=" in here*\n";
+	    			}
 	    		}
 	    		
 	        	
 	        	JSONObject locations = json.getJSONObject("locations");
 	        	 jsonarray = locations.names();
 	        	
-	    		HashMap<String, String> mapppedLocations = new HashMap<String, String>();
 
 	    		text +="*You can go ";
 	    		for(int i=0; i<jsonarray.length(); i++ ){
@@ -158,15 +197,25 @@ public class DisplayHelper {
 				
 				String currentNick = json.getString("nick");
 				String location = json.getString("location");
-				text+= "You enter " + location +"...\n";
-				//to do: playerXX enters..
+				if(currentNick.equals(playerName )){
+					text+= "You enter " + location +"...\n";
+				}
+				else{
+					text+= currentNick+" enters...";
+				}
+				
 			}
 			if(event.equals("player_leaves")){
 
 				String currentNick = json.getString("nick");
 				String location = json.getString("location");
-				text+= "You leave " + location +"...\n";
-				//to do: playerXX leaves..
+				
+				if(currentNick.equals(playerName )){
+					text+= "You leave " + location +"...\n";
+				}
+				else{
+					text+= currentNick +" leaves "+ location+ "...\n";
+				}
 			
 			}
 
@@ -176,9 +225,8 @@ public class DisplayHelper {
 				String defenderNick = json.getString("defender");
 				String attackerNick = json.getString("attacker");
 				
-				//todo: remove this hardcoded part
-				String attacker = (attackerNick.equals("Username")) ? "You" : attackerNick;
-				String defender = (defenderNick.equals("Username")) ? "you" : defenderNick;
+				String attacker = (attackerNick.equals(playerName)) ? "You" : attackerNick;
+				String defender = (defenderNick.equals(playerName)) ? "you" : defenderNick;
 				
 				String msgType = json.getString("type");
 				if(msgType.equals("hit")){
@@ -194,7 +242,7 @@ public class DisplayHelper {
 					text+= attacker + " killed " + defender + "!\n";
 				}
 			}
-			//todo: the rest of message types
+			//todo: the rest of message types ???
 			
 		} catch(JSONException e){
 			text = "invalid command, unknown error!";
