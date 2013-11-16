@@ -4,6 +4,9 @@ import io.socket.*;
 import org.json.*;
 
 class Main {
+	
+	
+	
     public static void main(String[] args) {
         if(args.length < 3) {
             System.out.println("Usage: client SERVER NICK PASSWORD");
@@ -57,7 +60,7 @@ class Main {
                     public void on(String event, IOAcknowledge ack, Object... args) {
                          System.out.println("Received an event: '" + event + "'");
                         
-                        String textToDisplay = DisplayHelper.displayEvent(event, ack, args);
+                        String textToDisplay = DisplayHelper.displayEvent(nick, event, ack, args);
                         System.out.println(textToDisplay);
                     }
                 });
