@@ -1,0 +1,22 @@
+<!-- @author: kajtek@idorobots.org -->
+<html>
+  <head>
+    <link href="client.css" rel="stylesheet" type="text/css" media="screen" title="default"/>
+  </head>
+  <body onload="preinit();">
+    <script src="socket.io/socket.io.min.js"></script>
+    <script src="client.js"></script>
+    <div id="wrapper">
+      <div id="login-box">
+	<input id="server-name" type="text" size="30" value="127.0.0.1:8080"/>
+	<br/>
+	<input id="login-name" type="text" size="10" value="Nickname"/>
+	<br/>
+	<input id="login-pass" type="text" size="10" value="password"/>
+	<br/>
+	<input id="login-button" type="button" value="Start playing!" onclick="init();"/>
+      </div>
+      <div id="game-box"></div>
+    </div>
+  </body>
+</html>

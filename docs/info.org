@@ -1,0 +1,463 @@
+################################################################################
+#+TITLE: *Informacje implementacyjne*
+#+DATE: \today
+#
+#+BEGIN_OPTIONS
+#+STARTUP: content
+#+LaTeX_CLASS: article
+#+LaTeX_CLASS_OPTIONS: []
+#+LaTeX_HEADER: \usepackage[a4paper, margin=2.5cm]{geometry}
+#+LaTeX_HEADER: \usepackage[polish]{babel}
+#+LaTeX_HEADER: \usepackage{amsmath}
+#+LATEX_HEADER: \usepackage{minted}
+#+OPTIONS: tags:nil, todo:nil, toc:nil, author:nil
+#+END_OPTIONS
+####################
+
+* Protokół komunikacji
+** Dokumentacja serwera
+- https://github.com/brainly/hive/blob/master/docs/docs.pdf (PDF)
+- https://github.com/brainly/hive/blob/master/docs/docs.org (trochę zepsuty markup)
+- https://github.com/brainly/hive/blob/master/examples/chat/README.org (przykład wykorzystania serwera)
+
+** Socket.IO
+Serwer korzysta z protokołu Socket.IO do komunikacji:
+- specyfikacja - https://github.com/LearnBoost/socket.io-spec
+- referencyjna implementacja klienta - https://github.com/LearnBoost/socket.io-client
+
+#+latex: \noindent
+...oraz dwóch protokołów transportujących:
+- WebSocket - http://en.wikipedia.org/wiki/WebSocket
+- XHR-polling - [[http://en.wikipedia.org/wiki/Comet_(programming)#XMLHttpRequest_long_polling]]
+
+*** Klient przeglądarkowy
+Implementacja klienta przeglądarkowego może wykorzystać gotowego klienta Socket.IO wymienionego powyżej.
+
+*** Klient desktopowy
+Implementacja klienta desktopowego może wykorzystać dowolną bibliotekę kliencką Socket.IO:
+- https://github.com/benkay/java-socket.io.client (Java)
+- https://github.com/Gottox/socket.io-java-client (Java)
+- https://pypi.python.org/pypi/socketIO-client (Python)
+- http://socketio4net.codeplex.com/ (.NET)
+
+#+latex: \noindent
+...lub wykorzystać gołe połączenie WebSocket:
+- http://docs.oracle.com/javaee/7/tutorial/doc/websocket.htm (Java)
+- http://java-websocket.org/ (Java)
+- https://pypi.python.org/pypi/websocket-client/0.4 (Python)
+
+#+latex: \noindent
+...oraz prosty parser wiadomości Socket.IO zakładający, że przyjmowane będą następujące wiadomości:
+
+#+begin_example
+"1:::" - po nawiązaniu połączenia z serwerem,
+"5:::JSON" - przy każdym evencie, gdzie "JSON" to zakodowany w JSONie event gry (więcej poniżej),
+"8:::" - po okresie bez żadnej aktywności,
+"0:::" - po rozłączeniu z serwerem,
+#+end_example
+
+#+latex: \noindent
+Ostatnia opcja będzie wymagała samodzielnego przeprowadzenia połączenia z serwerem poprzez HTTP oraz następnie połączenia WebSocket pod odpowiedni przydzielony przez serwer URL.
+
+** Event'y gry
+Komunikacja z serwerem odbywa się tylko i wyłącznie przez event'y zakodowane jako krótkie JSON'y.
+Każdy event wysyłady do/przychodzący z serwera musi być następującej postaci:
+
+#+begin_src javascript
+  {
+      "name" : nazwa_eventu,
+      "args" : argumenty_eventu
+  }
+#+end_src
+
+#+latex: \noindent
+Konkretny format argumentów zależy od typu event'u i będzie opisany [[ref:commands][poniżej]].
+
+** Błędy sewera
+Błędy serwera są przekazywane jako specjalny event =hive_error=, więc mogą być obsułgiwane w taki sam sposób, jak pozostałe event'y.
+
+#+begin_src javascript
+  {
+      "name" : "hive_error",
+      "args" : {
+          "error" : kod_bledu,
+          "description" : opis_bledu
+      }
+  }
+#+end_src
+
+** Autoryzacja
+Przed rozpoczęciem gry gracz musi się autoryzować na swoje konto wysyłając następujący event:
+
+#+begin_src javascript
+  {
+      "name" : "authorize",
+      "args" : [
+          {
+              "nick" : login,
+              "password" : hash_hasla
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie =login= to wybrany Nick gracza, a =hash_hasla= to hash *SHA1* otrzymany z wybranego przez gracza hasła, posolonego jego nazwą użytkownika:
+
+#+begin_src javascript
+nickname = "Nickname";
+password = "Password"
+// (nickname + password) == "NicknamePassword"
+hash = sha1(nickname + password);
+// hash == "ca805ddc46b39fc3cb1099ec5442b9c7aae49e47"
+#+end_src
+
+#+latex: \noindent
+W odpowiedzi otrzymamy:
+
+#+begin_src javascript
+  {
+      "name" : "authorize",
+      "args" : [
+          {
+              "permission" : wynik_autoryzacji
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= odpowiednio dla powodzenia i niepowodzenia autoryzacji.
+
+** Tworzenie postaci
+Tworzenie nowej postaci przebiega bardzo prosto - przeprowadzamy autoryzację do serwera podając nowy nick i nowe hasło. Jeśli postać o takim nicku nie istnieje konto zostanie utworzone, a serwer w odpowiedzi zwróci:
+
+#+begin_src javascript
+  {
+      "name" : "authorize",
+      "args" : [
+          {
+              "permission" : wynik_autoryzacji
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= (odpowiadająca sytuacji, gdy nick został już przez kogoś zajęty).
+
+#+latex: \noindent
+*Obecnie nie mam w planach dodawania zmiany hasła itd, więc będzie to jedyny sposób tworzenia nowych kont graczy.*
+
+** "Wejście" do gry
+Bezpośrednio po wejściu do gry otrzymamy kilka event'ów opisujących świat gry, w którym się znajdujemy i wydarzenia w nim się odbywające:
+
+- =location_info= - opisane przy okazji komendy [[ref:examine][examine]],
+- =character_info= - opisane przy okazji komendy [[ref:examine][examine]],
+- =player_enters= - opisane przy okazji komendy [[ref:move][move]]
+
+** Rozmowa
+Rozmowa odbywa się przez wysłanie eventu =say= zawierającego typ wypowiedzi oraz jej tekst:
+
+#+begin_src javascript
+  {
+      "name" : "say",
+      "args" : [
+          {
+              "text" : wiadomosc,
+              "type" : typ_wiadomosci
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+=wiadomosc= zawiera tekst wysyłanej wiadomości. =typ_wiadomosci= zawiera krótki string prezentujący typ wypowiedzi (na przykład =says=, =whispers=, =yells=, etc) dla potrzeb kosmetycznych. W efekcie otrzymamy event:
+
+#+begin_src javascript
+  {
+      "name" : "msg",
+      "args" : [
+          {
+              "nick" : nazwa_gracza,
+              "type" : typ_wypowiedzi,
+              "text" : tekst_wypowiedzi
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+Taki sam event dostaniemy przy każdej wypowiedzi innych graczy.
+
+** Komendy gracza
+Interakcję ze światem gry umożliwiają graczowi komendy, które są przesyłane poprzez event =do=:
+
+#+begin_src javascript
+  {
+      "name" : "do",
+      "args" : [komenda]
+  }
+#+end_src
+
+#+latex: \noindent
+W przypadku podania błędnych argumentów dla komendy otrzymamy następujący event zawierający =opis= problemu:
+
+#+begin_src javascript
+  {
+      "name" : "bad_command",
+      "description" : opis
+  }
+#+end_src
+
+#+latex: \noindent
+Więcej o dostępnych komendach [[ref:commands][tutaj]].
+
+* Dostępne komendy
+# <<<ref:commands>>>
+** =examine=
+# <<<ref:examine>>>
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "examine",
+      "args" : id_obiektu
+  }
+#+end_src
+
+#+latex: \noindent
+=id_obiektu= może być nazwą gracza/NPC/przeciwnika, identyfikatorem lokacji lub identyfikatorem przedmiotu osiągalnego z lokacji, w które aktualnie znajduje się gracz. W zależności od typu obiektu w odpowiedzi otrzymamy:
+
+#+begin_src javascript
+  {
+      "name" : "character_info",
+      "args" : [opis_gracza]
+  }
+  // ...lub:
+  {
+      "name" : "location_info",
+      "args" : [opis_lokacji]
+  }
+  // ...lub:
+  {
+      "name" : "item_info",
+      "args" : [opis_przedmiotu]
+  }
+#+end_src
+
+#+latex: \noindent
+Więcej o =opisie_gracza= [[ref:character][tutaj]], więcej o =opisie_lokacji= [[ref:location][tutaj]], więcej o =opisie_przedmiotu= [[ref:item][tutaj]].
+
+** =move=
+# <<<ref:move>>>
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "move",
+      "args" : id_lokacji
+  }
+#+end_src
+
+#+latex: \noindent
+=id_lokacji= musi być prawidłowym ID lokacji osiągalnej z lokacji, w której aktualnie znajduje się gracz. W odpowiedzi gracz zostanie przeniesiony do nowej lokacji i otrzyma następujący event:
+
+#+begin_src javascript
+  {
+      "name" : "location_info",
+      "args" : [opis_lokacji]
+  }
+#+end_src
+
+#+latex: \noindent
+Dodatkowo zostaną wygenerowane dwa event'y propagowane do wszystkich graczy obecnych w starej i nowej lokacji gracza:
+
+#+begin_src javascript
+  {
+      "name" : "player_leaves",
+      "args" : [
+          {
+              "location" : nazwa_opuszczanej_lokacji,
+              "nick" : nick_opuszczajacego_gracza
+          }
+      ]
+  }
+  
+  {
+      "name" : "player_enters",
+      "args" : [
+          {
+              "location" : nazwa_nowe_lokacji,
+              "nick" : nick_gracza
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+Event'y te istnieją z czysto kosmetycznych względów.
+
+#+latex: \noindent
+Więcej o =opisie_lokacji= [[ref:location][tutaj]].
+
+** =attack=
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "attack",
+      "args" : nazwa_gracza
+  }
+#+end_src
+
+#+latex: \noindent
+=nazwa_gracza= musi być prawidłowym ID gracza/przeciwnika/NPC obecnego w lokacji, w której aktualnie znajduje się gracz. W odpowiedzi gracz zaatakuje =nazwa_gracza= i otrzyma następujący event:
+
+#+begin_src javascript
+  {
+      "name" : "battle",
+      "args" : [
+          {
+              "attacker" : nazwa_gracza_atakujacego,
+              "defender" : nazwa_drugiego_gracza,
+              "type" : typ_wydarzenia,
+              "value" : wartosc_wydarzenia
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+=typ_wydarzenia= zawiera typ zaistniałego wydarzenia (na przykład "hit", "miss", "kill"); jeśli obecne jest pole =wartosc_wydarzenia= zawiera ono wartość liczbową opisującą zdarzenie (na przykład dla typu "hit" =wartosc_wydarzenia= będzie opisywała siłę uderzenia). Podobne event dostaną wszyscy gracze obecni w danej lokacji. Wykonanie tej komendy może rozzłościć NPC lub przeciwnika prowadząc do walki na śmierć i życie (lub ucieczkę do innej lokacji). W przypadku śmierci któregoś z graczy otrzymamy taki sam event ze stosownym opisem natomiast przegrany gracz zostanie usunięty z obecnej lokacji (jego przedmioty w niej zostają).
+
+** =take= / =drop=
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "take"/"drop",
+      "args" : id_przedmiotu
+  }
+#+end_src
+
+#+latex: \noindent
+=id_przedmiotu= musi być prawidłowym ID przedmiotu obecnego w lokacji, w której aktualnie znajduje się gracz (lub w jego inwentarzu). W odpowiedzi przedmiot zostanie przeniesiony do inwentarza gracza (lub do lokacji, w której obecnie się znajduje) i otrzymamy nastepujący event:
+
+#+begin_src javascript
+  {
+      "name" : "inventory_update",
+      "args" : {
+          "nick" : nazwa_gracza,
+          "type" : typ_aktualizacji,
+          "id" : id_przedmiotu,
+          "name" : nazwa_przedmiotu
+      }
+  }
+#+end_src
+
+#+latex: \noindent
+Event taki otrzymamy także w wyniku akcji innego gracza znajdującego się w tej samej lokalizacji. Więcej o przedmiotach [[ref:item][tutaj]].
+
+* Reprezentacja świata gry
+Poniższe sekcje zawierają opisy różnych obiektów świata gry, które mogą się zmieniać w trakcie gry w reakcji na akcje graczy.
+
+#+latex: \noindent
+Serwer spodziewa się pojedynczych plików zawierających JSON'owe array'e obiektów opisanych poniżej (przykładowy świat dostępny jest [[https://github.com/Idorobots/zpi-mud/tree/master/resources][tutaj]]). Dodatkowo serwer zakłada, że wszelkie identyfikatory (=id= dla lokacji i przedmiotów oraz =nick= dla graczy) są *unikatowe*.
+
+** Gracze/NCP/Przeciwnicy
+# <<<ref:character>>>
+Stan gracza można zrozumieć jako następujący JSON:
+
+#+begin_src javascript
+  {
+      "nick" : nazwa_gracza,
+      "stats" : {
+          "health" : zdrowie,
+          "strength" : sila,
+          "toughness" : odpornosc
+      },
+      "inventory" : inventarz
+  }
+#+end_src
+
+- =nazwa_gracza= jest unikatową nazwą gracza identyfikującą go w świecie gry,
+- =zdrowie= jest liczbą całkowitą określającą poziom zdrowia gracza (po osiąginięciu wartości <= 0 gracz ginie),
+- =sila= jest liczbą całkowitą określającą siłę gracza, która odpowiada za siłę jego ataków,
+- =odpornosc= jest liczbą całkowitą określającą wytrzymałość gracza, która odpowiada za odporność na ataki innych graczy,
+- =inventarz= jest obiektem zawierającym ID przedmiotów posiadanych przez gracza:
+
+#+begin_src javascript
+  {
+      id_przedmiotu : nazwa_przedmiotu,
+      ...
+  }
+#+end_src
+
+#+latex: \noindent
+Wszystkie powyższe wartości, poza =nazwa_gracza= mogą ulegać zmianie w trakcie gry.
+
+** Lokacje
+# <<<ref:location>>>
+Stan lokacji przedstawia następujący JSON:
+
+#+begin_src javascript
+  {
+      "id" : id_lokacji,
+      "name" : nazwa_lokacji,
+      "description" : opis_lokacji,
+      "players" : gracze_w_lokacji,
+      "items" : przedmioty_w_lokacji,
+      "locations" : drogi_do_innych_lokacji
+  }
+#+end_src
+- =id_lokacji= jest unikatowym indentyikatorem lokacji,
+- =nazwa_lokacji= jest krótkim stringiem będącym nazwą lokacji,
+- =opis_lokacji= zawiera krótki opis tego, co znajduje się w danej lokacji,
+- =gracze_w_lokacji= jest array'em nazw graczy/NPC/przeciwników znajdujących się w danej lokacji,
+- =przedmioty_w_lokacji= jest obiektem zawierającym ID przedmiotów znajdujących się w danej lokacji:
+
+#+begin_src javascript
+  {
+      id_przedmiotu : nazwa_przedmiotu,
+      ...
+  }
+#+end_src
+
+- =drogi_do_innych_lokacji= jest obiektem zawierającym ścieżki do innych lokacji:
+
+#+begin_src javascript
+  {
+      droga_1 : id_lokacji_1,
+      droga_2 : id_lokacji_2
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie każda =droga= jest unikatową nazwą ścieżki a każde =id_lokacji= unikatowym identyfikatorem lokacji, na przykład:
+
+#+begin_src javascript
+  {
+      "north" : "starting_tavern",
+      "south" : "deep_woods"
+  }
+#+end_src
+
+** Przedmioty
+# <<<ref:item>>>
+Opis przedmiotów dostępnych w świecie przedstiawia nostępujący JSON:
+
+#+begin_src javascript
+  {
+      "id" : id_przedmiotu,
+      "name" : nazwa_przedmiotu,
+      "modifiers" : {
+          "health" : zdrowie,
+          "strength" : sila,
+          "toughness" : odpornosc
+      }
+  }
+#+end_src
+
+- =id_przedmiotu= jest unikatowym identyfikatorem przedmiotu,
+- =nazwa_przedmiotu= to krótki string reprezentujący nazwę przedmiotu,
+- =zdrowie= jest liczbą całkowitą określającą modyfikator zdrowia gracza,
+- =sila= jest liczbą całkowitą określającą modyfikator siły gracza,
+- =odpornosc= jest liczbą całkowitą określającą modyfikator wytrzymałości gracza,
+

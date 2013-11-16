@@ -1,0 +1,14 @@
+%% -*- erlang -*-
+{application, mud,
+ [
+  {description, "ZPI MUD"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  lager
+                 ]},
+  {mod, {mud, []}},
+  {env, []}
+ ]}.
