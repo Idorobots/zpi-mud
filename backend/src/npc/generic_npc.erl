@@ -49,11 +49,14 @@ on_neutral(<<"battle">>, [Battle], State) ->
     case prop(<<"defender">>, Battle) of
         Nick ->
             yell(100, <<"What the hell, ", Attacker/binary, "!? Stop that!">>, State),
-            attack(700, Attacker, State),
-            {ok, hostile, State};
+            case random:uniform(100) >= 50 of
+                true  -> attack(700, Attacker, State),
+                         {ok, hostile, State};
+                false -> {ok, neutral, State}
+            end;
 
         _Otherwise ->
-            case random:uniform(100) >= 90 of
+            case random:uniform(100) >= 95 of
                 true  -> yell(100, <<"You two, stop that at once!">>, State),
                          attack(800, Attacker, State),
                          {ok, hostile, State};
@@ -138,7 +141,10 @@ on_hostile(<<"msg">>, [Speech], State) ->
     Target = State#state.target,
     case prop(<<"nick">>, Speech) of
         Target ->
-            yell(100, <<"You don't say, ", Target/binary, "!">>, State),
+            case random:uniform(100) >= 70 of
+                true  -> yell(100, <<"You don't say, ", Target/binary, "!">>, State);
+                false -> ok
+            end,
             {ok, hostile, State};
 
         _ ->
