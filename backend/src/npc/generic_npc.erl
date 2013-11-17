@@ -33,7 +33,7 @@ on_friendly(<<"msg">>, [Speech], State) ->
     Nick = prop(<<"nick">>, Speech),
     case re:run(prop(<<"text">>, Speech), <<".*(quest|mission|job|gold|adventure).*">>) of
         {match, _} ->
-            say(100, <<"I hopu you'll get what you are looking for, ", Nick/binary, ".">>, State),
+            say(100, <<"I hope you'll get what you are looking for, ", Nick/binary, ".">>, State),
             {ok, friendly, State};
 
         _ ->
