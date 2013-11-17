@@ -66,7 +66,7 @@ cleanup(Data) ->
 
 %% Gen server handlers:
 handle_call({new_character, Nick, Password, Sid}, _From, State) ->
-    case validate_nick(Nick) of
+    case validate_nick(Nick, State) of
         true ->
             LocationID = mud:get_env(starting_location),
             Location = prop(LocationID, State#state.locations),
@@ -542,10 +542,13 @@ offline(Nick, State) ->
         false -> State
     end.
 
-validate_nick(Nick) ->
+validate_nick(Nick, State) ->
     byte_size(Nick) < mud:get_env(max_allowed_nick_len)
         andalso byte_size(Nick) > mud:get_env(min_allowed_nick_len)
-        andalso valid_chars(Nick).
+        andalso valid_chars(Nick)
+        andalso prop(Nick, State#state.passwd, false) == false
+        andalso prop(Nick, State#state.locations, false) == false
+        andalso prop(Nick, State#state.items, false) == false.
 
 valid_chars(Nick) ->
     case binary:match(Nick, [<<"<">>, <<">">>], []) of
