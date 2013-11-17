@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([authorize/1, say/1, do/1, cleanup/1]).
+-export([authorize/1, say/1, do/1, cleanup/1, npcize/1, npcize/2]).
 
 -import(mud_utils, [json_to_file/2, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
@@ -64,9 +64,20 @@ cleanup(Data) ->
                               sid(Data),
                               state(Data)}).
 
+%% External functions:
+npcize(Strategy) ->
+    npcize(all, Strategy).
+
+npcize(Who, Strategy) when is_binary(Who) ->
+    npcize([Who], Strategy);
+
+npcize(Who, Strategy) when is_list(Who) ->
+    gen_server:cast(?MODULE, {npcize, Who, Strategy}).
+
+
 %% Gen server handlers:
 handle_call({new_character, Nick, Password, Sid}, _From, State) ->
-    case validate_nick(Nick) of
+    case validate_nick(Nick, State) of
         true ->
             LocationID = mud:get_env(starting_location),
             Location = prop(LocationID, State#state.locations),
@@ -320,6 +331,37 @@ handle_cast({cleanup, Sid, PlayerState}, State) ->
             {noreply, State}
     end;
 
+handle_cast({npcize, all, Strategy}, State) ->
+    handle_cast({npcize,
+                 lists:map(fun({Nick, _Vals}) ->
+                                   Nick
+                           end,
+                           State#state.players),
+                 Strategy},
+                State);
+
+handle_cast({npcize, Who, Strategy}, State) ->
+    Passwd = lists:map(fun(Nick) ->
+                               case is_char_online(Nick, State) of
+                                   true ->
+                                       prop(Nick, State#state.passwd);
+
+                                   false ->
+                                       case prop(Nick, State#state.passwd, null) of
+                                           null ->
+                                               {Nick, [{<<"npc">>, Strategy},
+                                                       {<<"location">>, mud:get_env(starting_location)},
+                                                       {<<"password">>, mud:get_env(hive_api_key)}]};
+
+                                           Vals ->
+                                               {Nick, update(<<"npc">>, Strategy, Vals)}
+                                       end
+                               end
+                       end,
+                       Who),
+    ok = spawn_npcs(State#state.ai_supervisor, Passwd, State),
+    {noreply, State#state{passwd = Passwd ++ State#state.passwd}};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -334,12 +376,12 @@ handle_info({timeout, _TRef, {spawn_ai_sup, Supervisor}}, State) ->
     of
         {ok, Pid} ->
             lager:notice("Loading NPCs..."),
-            ok = spawn_npcs(Pid, State#state.passwd),
+            ok = spawn_npcs(Pid, State#state.passwd, State),
             {noreply, State#state{ai_supervisor = Pid}};
 
         {error, {already_started, Pid}} ->
             lager:notice("Loading NPCs..."),
-            ok = spawn_npcs(Pid, State#state.passwd),
+            ok = spawn_npcs(Pid, State#state.passwd, State),
             {noreply, State#state{ai_supervisor = Pid}};
 
         _ ->
@@ -406,18 +448,21 @@ extractor(Field) ->
             {proplists:get_value(Field, JSON), JSON}
     end.
 
-spawn_npcs(_AISup, []) ->
+spawn_npcs(_AISup, [], _State) ->
     ok;
 
-spawn_npcs(AISup, [{Nick, Character} | Characters]) ->
-    case prop(<<"npc">>, Character, false) of
-        false ->
-            spawn_npcs(AISup, Characters);
+spawn_npcs(AISup, [{Nick, Character} | Characters], State) ->
+    case {prop(<<"npc">>, Character, null), is_char_online(Nick, State)} of
+        {null, _} ->
+            spawn_npcs(AISup, Characters, State);
 
-        _ ->
+        {_, true} ->
+            spawn_npcs(AISup, Characters, State);
+
+        {_, false} ->
             lager:info("Spawning NPC ~s...", [Nick]),
             case supervisor:start_child(AISup, [Nick, Character]) of
-                {ok, _Pid} -> spawn_npcs(AISup, Characters);
+                {ok, _Pid} -> spawn_npcs(AISup, Characters, State);
                 _          -> error
             end
     end.
@@ -542,10 +587,13 @@ offline(Nick, State) ->
         false -> State
     end.
 
-validate_nick(Nick) ->
+validate_nick(Nick, State) ->
     byte_size(Nick) < mud:get_env(max_allowed_nick_len)
         andalso byte_size(Nick) > mud:get_env(min_allowed_nick_len)
-        andalso valid_chars(Nick).
+        andalso valid_chars(Nick)
+        andalso prop(Nick, State#state.passwd, false) == false
+        andalso prop(Nick, State#state.locations, false) == false
+        andalso prop(Nick, State#state.items, false) == false.
 
 valid_chars(Nick) ->
     case binary:match(Nick, [<<"<">>, <<">">>], []) of

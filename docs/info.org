@@ -361,7 +361,7 @@ Poniższe sekcje zawierają opisy różnych obiektów świata gry, które mogą 
 #+latex: \noindent
 Serwer spodziewa się pojedynczych plików zawierających JSON'owe array'e obiektów opisanych poniżej (przykładowy świat dostępny jest [[https://github.com/Idorobots/zpi-mud/tree/master/resources][tutaj]]). Dodatkowo serwer zakłada, że wszelkie identyfikatory (=id= dla lokacji i przedmiotów oraz =nick= dla graczy) są *unikatowe*.
 
-** Gracze/NCP/Przeciwnicy
+** Gracze/NPC/Przeciwnicy
 # <<<ref:character>>>
 Stan gracza można zrozumieć jako następujący JSON:
 
@@ -447,6 +447,7 @@ Opis przedmiotów dostępnych w świecie przedstiawia nostępujący JSON:
   {
       "id" : id_przedmiotu,
       "name" : nazwa_przedmiotu,
+      "description" : opis_przedmiotu,
       "modifiers" : {
           "health" : zdrowie,
           "strength" : sila,
@@ -457,6 +458,7 @@ Opis przedmiotów dostępnych w świecie przedstiawia nostępujący JSON:
 
 - =id_przedmiotu= jest unikatowym identyfikatorem przedmiotu,
 - =nazwa_przedmiotu= to krótki string reprezentujący nazwę przedmiotu,
+- =opis_przedmiotu= to krótki string opisujący przedmiot,
 - =zdrowie= jest liczbą całkowitą określającą modyfikator zdrowia gracza,
 - =sila= jest liczbą całkowitą określającą modyfikator siły gracza,
 - =odpornosc= jest liczbą całkowitą określającą modyfikator wytrzymałości gracza,
