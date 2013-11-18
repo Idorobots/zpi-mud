@@ -44,8 +44,13 @@ data(Trigger, State) ->
 
 file_to_json(File) ->
     case file:read_file(File) of
-        {ok, Contents} -> jsonx:decode(Contents, [{format, proplist}]);
-        Otherwise -> Otherwise
+        {ok, Contents} ->
+            {_Encoding, BOMLen} = unicode:bom_to_encoding(Contents),
+            Data = binary:part(Contents, {BOMLen, byte_size(Contents)-BOMLen}),
+            jsonx:decode(Data, [{format, proplist}]);
+
+        Otherwise ->
+            Otherwise
     end.
 
 json_to_file(File, Data) ->
