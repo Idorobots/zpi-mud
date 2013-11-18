@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([authorize/1, say/1, do/1, cleanup/1, npcize/1, npcize/2]).
+-export([authorize/1, say/1, do/1, cleanup/1, npcize/1, npcize/2, move/2, status/0]).
 
 -import(mud_utils, [json_to_file/2, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
@@ -71,9 +71,14 @@ npcize(Strategy) ->
 npcize(Who, Strategy) when is_binary(Who) ->
     npcize([Who], Strategy);
 
-npcize(Who, Strategy) when is_list(Who) ->
+npcize(Who, Strategy) when Who == all orelse is_list(Who) ->
     gen_server:cast(?MODULE, {npcize, Who, Strategy}).
 
+move(Who, Where) when is_binary(Who) andalso is_binary(Where) ->
+    gen_server:cast(?MODULE, {move, Who, Where}).
+
+status() ->
+    gen_server:call(?MODULE, status).
 
 %% Gen server handlers:
 handle_call({new_character, Nick, Password, Sid}, _From, State) ->
@@ -344,7 +349,7 @@ handle_cast({npcize, Who, Strategy}, State) ->
     Passwd = lists:map(fun(Nick) ->
                                case is_char_online(Nick, State) of
                                    true ->
-                                       prop(Nick, State#state.passwd);
+                                       {Nick, prop(Nick, State#state.passwd)};
 
                                    false ->
                                        case prop(Nick, State#state.passwd, null) of
@@ -354,13 +359,33 @@ handle_cast({npcize, Who, Strategy}, State) ->
                                                        {<<"password">>, mud:get_env(hive_api_key)}]};
 
                                            Vals ->
-                                               {Nick, update(<<"npc">>, Strategy, Vals)}
+                                               {Nick, update(<<"password">>,
+                                                             mud:get_env(hive_api_key),
+                                                             update(<<"npc">>, Strategy, Vals))}
                                        end
                                end
                        end,
                        Who),
     ok = spawn_npcs(State#state.ai_supervisor, Passwd, State),
     {noreply, State#state{passwd = Passwd ++ State#state.passwd}};
+
+handle_cast({move, Nick, Where}, State) ->
+    case prop(Nick, State#state.passwd) of
+        null ->
+            {noreply, State};
+
+        Passwd ->
+            LocationID = prop(<<"location">>, Passwd),
+            case prop(Where, State#state.locations) of
+                null ->
+                    {noreply, State};
+
+                _ValidLocation ->
+                    %% FIXME Creating atoms at run time is a bad idea...
+                    Sid = list_to_atom(binary_to_list(Nick)),
+                    {noreply, join(Nick, Sid, Where, leave(Nick, Sid, LocationID, State))}
+            end
+    end;
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -403,13 +428,14 @@ code_change(_OldVsn, State, _Extra) ->
 load_game_data() ->
     Resources = mud:get_env(resources),
     lager:notice("Loading MUD resources: ~p...", [Resources]),
-    #state{
-       locations = load_locations(filename:join([Resources, <<"locations.json">>])),
-       players = load_players(filename:join([Resources, <<"players.json">>])),
-       passwd = load_passwords(filename:join([Resources, <<"passwd.json">>])),
-       items = load_items(filename:join([Resources, <<"items.json">>])),
-       online_players = []
-      }.
+    State = #state{
+               locations = [],
+               passwd = load_passwords(filename:join([Resources, <<"passwd.json">>])),
+               players = load_players(filename:join([Resources, <<"players.json">>])),
+               items = load_items(filename:join([Resources, <<"items.json">>])),
+               online_players = []
+              },
+    load_locations(filename:join([Resources, <<"locations.json">>]), State).
 
 save_game_data(State) ->
     Resources = mud:get_env(resources),
@@ -419,8 +445,40 @@ save_game_data(State) ->
     save_passwords(filename:join([Resources, <<"passwd.json">>]), State#state.passwd),
     save_items(filename:join([Resources, <<"items.json">>]), State#state.items).
 
-load_locations(File) ->
-    lists:map(extractor(<<"id">>), file_to_json(File)).
+load_locations(File, State) ->
+    lists:foldl(fun(Location, NewState) ->
+                        LocationID = prop(<<"id">>, Location),
+                        Players = prop(<<"players">>, Location),
+                        NewestState =
+                            lists:foldl(fun(Nick, S) ->
+                                                case prop(Nick, S#state.passwd) of
+                                                    null ->
+                                                        S#state{
+                                                          passwd = update(Nick,
+                                                                          [{<<"location">>, LocationID}],
+                                                                          S#state.passwd)
+                                                         };
+
+                                                    Passwd ->
+                                                        S#state{
+                                                          passwd = update(Nick,
+                                                                          update(<<"location">>,
+                                                                                 LocationID,
+                                                                                 Passwd),
+                                                                          S#state.passwd)
+                                                         }
+                                                end
+                                        end,
+                                        NewState,
+                                        Players),
+                        NewestState#state{
+                          locations = update(LocationID,
+                                             update(<<"players">>, [], Location),
+                                             NewestState#state.locations)
+                         }
+                end,
+                State,
+                file_to_json(File)).
 
 load_players(File) ->
     lists:map(extractor(<<"nick">>), file_to_json(File)).
@@ -496,6 +554,7 @@ leave(Nick, Sid, LocationID, State) ->
 add_character(Character, Nick, Password, Location, State) ->
     State#state{players = update(Nick, Character, State#state.players),
                 passwd = update(Nick, [{<<"password">>, Password},
+                                       {<<"nick">>, Nick},
                                        {<<"location">>, Location}], State#state.passwd)}.
 
 apply_item([], Stats) ->

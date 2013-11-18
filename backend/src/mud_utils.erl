@@ -10,14 +10,20 @@ publish(Channel, Message) ->
 subscribe(<<"">>, _Channel) ->
     ok;
 
+subscribe(Sid, Channel) when is_binary(Sid) ->
+    api_call(post, [<<"pubsub/subscribe/">>, Sid], [str_cat(mud:get_env(channel_prefix), Channel)]);
+
 subscribe(Sid, Channel) ->
-    api_call(post, [<<"pubsub/subscribe/">>, Sid], [str_cat(mud:get_env(channel_prefix), Channel)]).
+    mud_ai:subscribe(Sid, Channel).
 
 unsubscribe(<<"">>, _Channel) ->
     ok;
 
+unsubscribe(Sid, Channel) when is_binary(Sid) ->
+    api_call(delete, [<<"pubsub/subscribe/">>, Sid], [str_cat(mud:get_env(channel_prefix), Channel)]);
+
 unsubscribe(Sid, Channel) ->
-    api_call(delete, [<<"pubsub/subscribe/">>, Sid], [str_cat(mud:get_env(channel_prefix), Channel)]).
+    mud_ai:unsubscribe(Sid, Channel).
 
 sid(Data) ->
     proplists:get_value(<<"sid">>, Data).
@@ -38,8 +44,13 @@ data(Trigger, State) ->
 
 file_to_json(File) ->
     case file:read_file(File) of
-        {ok, Contents} -> jsonx:decode(Contents, [{format, proplist}]);
-        Otherwise -> Otherwise
+        {ok, Contents} ->
+            {_Encoding, BOMLen} = unicode:bom_to_encoding(Contents),
+            Data = binary:part(Contents, {BOMLen, byte_size(Contents)-BOMLen}),
+            jsonx:decode(Data, [{format, proplist}]);
+
+        Otherwise ->
+            Otherwise
     end.
 
 json_to_file(File, Data) ->
