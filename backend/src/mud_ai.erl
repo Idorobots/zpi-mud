@@ -3,15 +3,16 @@
 
 -export([start_link/2, init/1, terminate/3]).
 -export([code_change/4, handle_event/3, handle_sync_event/4, handle_info/3]).
--export([transient/2, friendly/2, neutral/2, hostile/2]).
+-export([transient/2, friendly/2, neutral/2, hostile/2, subscribe/2, unsubscribe/2]).
 
--import(mud_utils, [prop/2, mk_event/2, str_cat/2, data/2, data/1]).
+-import(mud_utils, [prop/2, mk_event/2, str_cat/2, data/2, data/1, update/3]).
 
 -include("mud_ai.hrl").
 
 %% Gen FSM callbacks:
 start_link(Nick, NPC) ->
-    gen_fsm:start_link(?MODULE, {Nick, NPC}, []).
+    %% FIXME Creating atoms at run time is bad mojo...
+    gen_fsm:start_link({local, list_to_atom(binary_to_list(Nick))}, ?MODULE, {Nick, NPC}, []).
 
 init({Nick, NPC}) ->
     Password = prop(<<"password">>, NPC),
@@ -31,7 +32,22 @@ init({Nick, NPC}) ->
 terminate(_Reason, _StateName, State) ->
     mud_game:cleanup(data(State#state.state)).
 
+%% External functions:
+subscribe(Sid, Channel) ->
+    gen_fsm:send_all_state_event(Sid, {subscribe, Channel}).
+
+unsubscribe(Sid, Channel) ->
+    gen_fsm:send_all_state_event(Sid, {unsubscribe, Channel}).
+
 %% Gen FSM handlers:
+handle_event({subscribe, Location}, StateName, State) ->
+    ok = hive_pubsub:join([str_cat(mud:get_env(channel_prefix), Location)]),
+    {next_state, StateName, State#state{state = update(<<"location">>, Location, State#state.state)}};
+
+handle_event({unsubscribe, Location}, StateName, State) ->
+    ok = hive_pubsub:leave([str_cat(mud:get_env(channel_prefix), Location)]),
+    {next_state, StateName, State#state{state = update(<<"location">>, <<"">>, State#state.state)}};
+
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 

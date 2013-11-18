@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([authorize/1, say/1, do/1, cleanup/1, npcize/1, npcize/2]).
+-export([authorize/1, say/1, do/1, cleanup/1, npcize/1, npcize/2, move/2]).
 
 -import(mud_utils, [json_to_file/2, publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
@@ -71,9 +71,11 @@ npcize(Strategy) ->
 npcize(Who, Strategy) when is_binary(Who) ->
     npcize([Who], Strategy);
 
-npcize(Who, Strategy) when is_list(Who) ->
+npcize(Who, Strategy) when Who == all orelse is_list(Who) ->
     gen_server:cast(?MODULE, {npcize, Who, Strategy}).
 
+move(Who, Where) when is_binary(Who) andalso is_binary(Where) ->
+    gen_server:cast(?MODULE, {move, Who, Where}).
 
 %% Gen server handlers:
 handle_call({new_character, Nick, Password, Sid}, _From, State) ->
@@ -344,7 +346,7 @@ handle_cast({npcize, Who, Strategy}, State) ->
     Passwd = lists:map(fun(Nick) ->
                                case is_char_online(Nick, State) of
                                    true ->
-                                       prop(Nick, State#state.passwd);
+                                       {Nick, prop(Nick, State#state.passwd)};
 
                                    false ->
                                        case prop(Nick, State#state.passwd, null) of
@@ -361,6 +363,24 @@ handle_cast({npcize, Who, Strategy}, State) ->
                        Who),
     ok = spawn_npcs(State#state.ai_supervisor, Passwd, State),
     {noreply, State#state{passwd = Passwd ++ State#state.passwd}};
+
+handle_cast({move, Nick, Where}, State) ->
+    case prop(Nick, State#state.passwd) of
+        null ->
+            {noreply, State};
+
+        Passwd ->
+            LocationID = prop(<<"location">>, Passwd),
+            case prop(Where, State#state.locations) of
+                null ->
+                    {noreply, State};
+
+                _ValidLocation ->
+                    %% FIXME Creating atoms at run time is a bad idea...
+                    Sid = list_to_atom(binary_to_list(Nick)),
+                    {noreply, join(Nick, Sid, Where, leave(Nick, Sid, LocationID, State))}
+            end
+    end;
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -420,7 +440,11 @@ save_game_data(State) ->
     save_items(filename:join([Resources, <<"items.json">>]), State#state.items).
 
 load_locations(File) ->
-    lists:map(extractor(<<"id">>), file_to_json(File)).
+    lists:map(extractor(<<"id">>),
+              lists:map(fun(Location) ->
+                                update(<<"players">>, [], Location)
+                        end,
+                        file_to_json(File))).
 
 load_players(File) ->
     lists:map(extractor(<<"nick">>), file_to_json(File)).
@@ -496,6 +520,7 @@ leave(Nick, Sid, LocationID, State) ->
 add_character(Character, Nick, Password, Location, State) ->
     State#state{players = update(Nick, Character, State#state.players),
                 passwd = update(Nick, [{<<"password">>, Password},
+                                       {<<"nick">>, Nick},
                                        {<<"location">>, Location}], State#state.passwd)}.
 
 apply_item([], Stats) ->
