@@ -628,10 +628,12 @@ roll_defense(Stats) ->
     (T div 2) + random:uniform(T div 2).
 
 new_character(Nick) ->
+    Min = max(1, mud:get_env(stat_min)),
+    Max = max(Min+1, mud:get_env(stat_max)),
     [{<<"nick">>, Nick},
-     {<<"stats">>, [{<<"health">>, 100},
-                    {<<"strength">>, 100},
-                    {<<"toughness">>, 100}]},
+     {<<"stats">>, [{<<"health">>, Min + random:uniform(Max - Min)},
+                    {<<"strength">>, Min + random:uniform(Max - Min)},
+                    {<<"toughness">>, Min + random:uniform(Max - Min)}]},
      {<<"inventory">>, []}].
 
 kill_character(Player, LocationID, State) ->
