@@ -1,0 +1,160 @@
+################################################################################
+#+TITLE: *Dokumentacja klienta webbowego \\* projekt z przedmiotu ZPI
+#+AUTHOR: Kajetan Rzepecki
+#+DATE: \today
+#
+#+BEGIN_OPTIONS
+#+STARTUP: content
+#+LaTeX_CLASS: article
+#+LaTeX_CLASS_OPTIONS: []
+#+LaTeX_HEADER: \usepackage[a4paper, margin=2.5cm]{geometry}
+#+LaTeX_HEADER: \usepackage[polish]{babel}
+#+LaTeX_HEADER: \usepackage{amsmath}
+#+LATEX_HEADER: \usepackage{minted}
+#+OPTIONS: tags:nil, todo:nil, toc:nil
+#+END_OPTIONS
+####################
+
+#+begin_latex
+\pagebreak
+\tableofcontents
+\pagebreak
+#+end_latex
+
+* Kompilacja/Instalacja
+Ponieważ klient webbowy został napisany z wykorzystaniem technologii cieszących się szerokim wsparciem przeglądarek na wielu różnych platformach i w wielu różnych wersjach, a także w związku ze skryptową naturą języków sieci internet, kompilacja/instalacja nie jest konieczna - wystarczy posiadanie przeglądarki internetowej w "w miarę" aktualnej wersji - a projekt należy tylko rozpakować z archiwum. Wspierane przeglądarki:
+
+- *Google Chrome*,
+- *Internet Explorer* - w wersji >= 8,
+- *Mozilla Firefox*
+
+* Wskazówki użytkowania
+Niniejsza sekcja zawiera wskazówki użytkowania klienta webbowego.
+
+** Uruchamianie
+Uruchomienie klienta jest tak proste, jak otworzenie strony WWW:
+
+#+begin_example
+...Przejście do katalogu zawierającego pliki klienta...
+...Dwukrotne kliknięcie w client.html...
+#+end_example
+
+#+latex: \noindent
+W związku z internetową naturą klienta udostępniono także jego wersję sieciową, dostępną pod niniejszym adresem:
+
+#+begin_center
+http://student.agh.edu.pl/~krzepeck/projects/zpi/client.html
+#+end_center
+
+** Pierwsze uruchomienie
+Zakłdając, że serwer gry zostało uprzednio uruchomiony i znamy jego adres możęmy przystąpić do tworzenia konta gracza i logowania do gry. W tym celu należy uruchomić klienta webbowego =client.html=. W efekcie zostanie otworzone okno logowania do gry:
+
+#+begin_center
+#+attr_latex: scale=0.3
+[[file:./img/lobby.png]]
+#+end_center
+
+#+latex: \noindent
+W miejscu przeznaczonym na adres serwera (pierwsze pole) musimy wprowadzić adres serwera gry, do którego chcemy się podłączyć. Domyślnie jest to adres maszyny, na której właśnie pracujemy, ale nie jest to ograniczeniem.
+
+#+latex: \noindent
+Następnie musimy uzupełnić pola logowania, aby się zalogować, lub stworzyć nową postać.
+W celu stworzenia postaci wystarczy uzupełnić pola wybraną nazwą gracza i hasłem, a serwer stworzy postać z losowymi statystykami, jeśli tylko nazwa gracza nie została uprzednio przez kogoś zajęta. Od tej pory można się logować na tę postać wykorzystując wybraną nazwę gracza i hasło.
+
+#+latex: \noindent
+Po zalogowaniu zostaniemy przeniesieni bezpośrednio do świata gry:
+
+#+begin_center
+#+attr_latex: scale=0.3
+[[file:./img/ingame.png]]
+#+end_center
+
+#+latex: \noindent
+...który przywita nas następującym logiem:
+
+#+begin_example
+Welcome to the ZPI-MUD, Kajtek... Type help for help.
+You are in Dziedziniec. Słoneczne miejsce
+You can see Skórzany kaptur in here...
+You can see Szczyt Aughilda in here...
+You can see Sandały Mezuta in here...
+There's Helga in here...
+You can go południe
+Your stats:
+- health - 13
+- strength - 19
+- toughness - 13
+Your inventory:
+#+end_example
+
+** Opis UI i jego wykorzystanie
+Poniżej zawarto opis interfejsu użytkownika, który ze względu na tematykę projektu, jest stosunokowo prosty:
+
+#+begin_center
+#+attr_latex: scale=0.5
+[[file:./img/ingame2.png]]
+#+end_center
+
+#+latex: \noindent
+Interfejs składa się z trzech głównych pól:
+
+- *okno gry* - wyświetla informacje o tym, co dzieje się w świecie gry; jest interaktywne.
+
+- *pasek wprowadzania tekstu* - umożliwia wprowadzanie komend i rozmowę z innymi graczami/NPC.
+
+- *przycisk wysyłania* - umożliwia manualne wysłanie komendy; zaimplementowany dla kompletności.
+
+#+latex: \noindent
+Okno gry jest najważniejszym elementem interfejsu klienta webbowego, zapewnia interakcję ze światem gry oraz wyświetla w prosty i zrozumiały sposób zdarzenia, które w nim zachodzą. W celu rozróżnienia różnych zdarzeń zachodzących w świecie gry, linie loga są kolorowane w zależności od ich znaczenia:
+
+- kolor czarny - logi rozmów.
+
+- kolor ciemno-szary - informacje o otaczającym nas świecie.
+
+- kolor jasno-szary - komendy wprowadzane przez gracza.
+
+- kolor pomarańczowy - sytuacja wymagające wzmożonej czujności.
+
+#+latex: \noindent
+Na powyższym obrazku można zauważyć także, że niektóre słowa kluczowe są podkreślone. Są to *interaktywne słowa kluczowe*, po kliknięciu których do paska dialogu zostania dodana najodpowiedniejsza w danym kontekście komenda, gotowa do wysłania.
+
+** Lista dostępnych komend
+Poniższa lista wymienia wszystkie komendy dostępne dla gracza korzystającego z klienta webbowego:
+
+- =move|walk|go|run DESTINATION= - przejście ścieżką =DESTINATION= do innej lokacji świata gry.
+
+- =examine|look AT= - zbadanie innej postaci/przedmiotu/lokacji =AT=, które są w naszym zasięgu.
+
+- =drop|throw ITEM= - upuszczenie przedmiotu, który znajduje się w inwentarzu naszej postaci.
+
+- =take|grab|steal ITEM= - podniesienie przedmiotu, do którego mamy dostęp.
+
+- =inventory= - przeglądanie zawartości własnego inwentarza i statystyk.
+
+- =hit|kick|kill|attack PLAYER= - atakuje gracza =PLAYER=.
+
+- =help= - wyświetla listę komend dostępnych dla gracza.
+
+* Implementacja
+Niniejsza sekcja opisuje sposób implementacji tej części projektu a także wykorzystane technologie.
+
+** Technologia implementacji
+Klient webbowy korzysta z niewielkiej liczby różnych technologii, które są głęboko zakorzenione w sieci internet i cieszą się dobrym wsparciem:
+
+- *HML*
+- *CSS*
+- *JavaScript*
+
+** Implementacja protokołu komunikacji
+Serwer gry wykorzystuje protokół Socket.IO do komunikacji z klientami, dlatego głównym zadaniem tej części projektu jest ustanowienie połączenia z serwerem i jego utrzymanie podczas asynchronicznej komunikacji.
+
+#+latex: \noindent
+Do tego celu została wykorzystana gotowa biblioteka [[https://github.com/LearnBoost/socket.io-client][Socket.IO-client]], która zapewnia łatwą komunikację za pomocą event'ów w formacie JSON. Szczegóły protokołu komunikacji zostały opisane w dokumentacji serwera gry.
+#+latex: \noindent
+Warto wspomnieć jednak, jak przebiega autoryzacja do serwera - podczas autoryzacji hasło gracza jest "solone" jego nazwą użytkownika i hash'owane algorytmem *SHA1*. Dzięki temu wykorzystanie tablic tęczowych jest mało efektywne, a serwer przechowuje jedynie hash'e haseł, dzięki czemu ich wycieki nie są zbyt niebezpieczne.
+
+** Interfejs użytkownika
+Interfejs użytkownika został zaimplementowany bez wykorzystania żadnego przeznaczonego do tego framework'u. To było błędem, bo JavaScript jest insane. Aplikację kliencką można umieścić na dowolnej stronie, ponieważ całość interfejsu znajduje się w obrębie jednego elementu div.
+
+#+latex: \noindent
+Klient używa arkuszy stylów *CSS*, dzięki czemu możliwe jest dostosowanie jego wyglądu do własnych upodobań i zapotrzebowań.
