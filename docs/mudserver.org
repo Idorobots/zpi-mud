@@ -1,0 +1,734 @@
+################################################################################
+#+TITLE: *Dokumentacja serwera MUD - Multi User Dungeon* \\* projekt z przedmiotu ZPI
+#+AUTHOR: Kajetan Rzepecki
+#+DATE: \today
+#
+#+BEGIN_OPTIONS
+#+STARTUP: content
+#+LaTeX_CLASS: article
+#+LaTeX_CLASS_OPTIONS: []
+#+LaTeX_HEADER: \usepackage[a4paper, margin=2.5cm]{geometry}
+#+LaTeX_HEADER: \usepackage[polish]{babel}
+#+LaTeX_HEADER: \usepackage{amsmath}
+#+LATEX_HEADER: \usepackage{minted}
+#+OPTIONS: tags:nil, todo:nil, toc:nil
+#+END_OPTIONS
+####################
+
+#+begin_latex
+\pagebreak
+\tableofcontents
+\pagebreak
+#+end_latex
+
+* Kompilacja
+Niniejsza sekcja dokumentacji opisuje kompilację serwera gry MUD. Serwer został napisany w 100% w języku Erlang i wykorzystuje automatyczne narzędzie do budowania projektu - *Rebar*. W związku z tym faktem, do skompilowania projektu niezbędne są dwa programy:
+
+- *Git* - narzędzie do kontroli wersji wykorzystywane do klonowania bibliotek wykorzystanych w implementacji serwera,
+
+- *Erl* - środowisko uruchomieniowe/środowisko kompilacji języka Erlang (dołączone do projektu).
+
+#+latex: \noindent
+Poniższe instrukcje zakładają obecność i dostępność obu tych technologii na maszynie docelowej.
+
+** Platforma *nix
+Zakładając, że na systemie zainstalowano niezbędne zależności (*Git* oraz *środowisko Erlang*) można przejść do kompilacji projektu. W tym celu należy rozpakować archiwum zawierające źródła serwera i przejść do odpowiedniego katalogu:
+
+#+begin_example
+$ cd path/to/projekt
+$ tar -xf mudserverproject.tar.gz
+$ cd mudserverproject
+#+end_example
+
+#+latex: \noindent
+Następnie wystarczy już tylko posłużyć się dołączonym skryptem *Makefile* wykonując poniższą komendę (=build= jest opcjonalne):
+
+#+begin_example
+$ make [build]
+#+end_example
+
+#+latex: \noindent
+Skrypt ten wykorzystuje inne narzędzie (typowe dla programów napisanych w języku Erlang) - *Rebar*. Rebar automatycznie pobierze niezbędne zależności serwera korzystając z publicznie dostępnych repozytoriów *Git*.
+Następnie, Rebar automatycznie skompiluje wszystkie zależności oraz kod samego serwera i jeśli wszystko pójdzie dobrze, działanie komendy zakończy się następującym logiem (obcięty z oczywistych powodów):
+
+#+begin_example
+==> mudserverproject (get-deps)
+Pulling lager from {git,"git://github.com/basho/lager.git",{tag,"2.0.0"}}
+Cloning into lager...
+...
+==> Entering directory ..
+==> goldrush (compile)
+Compiled src/glc_ops.erl
+...
+==> mudserverproject (compile)
+...
+Compiled src/mud_game.erl
+#+end_example
+
+#+latex: \noindent
+Serwer został skompilowany i jest gotowy do użytku.
+
+** Platforma Windows
+Podobnie jak w przypadku kompilacji na platformie *nix, zakładając że wszystkie niezbędne programy są obecne na docelowej maszynie, należy rozpakować archiwum z kodem źródłowym i nastepnie przejść do niego:
+
+#+begin_example
+...Graficzne narzędzie do obsługi pliku mudserver.zip...
+> cd C:\path\to\mudserverproject
+#+end_example
+
+#+latex: \noindent
+Podobnie jak w przypadku kompilacji na platformie *nix, wykorzystano automatyczne narzędzie do budowania projektów - *Rebar*. Niestety ze względu na ograniczenia czasowe zostało ono przetestowane jedynie w dwóch *nixo-podobnych środowiskach dostępnych na platformę Windows:
+
+- *MinGW*
+- *GitBash*
+
+#+latex: \noindent
+Drugie z nich powinno być dostępne razem z dystrybucją narzędzia *git*. Nic nie stoi jednak na przeszkodzie, by projekt kompilował się bez dostępu do tych środowisk (dzięki generycznej naturze narzędzia Rebar). Aby skompilować projekt należy uruchomić następujące komendy:
+
+#+begin_example
+> rebar get-deps compile
+#+end_example
+
+#+latex: \noindent
+W efekcie narzędzie automatycznie ściągnie zależności projektu wykorzystując program Git, a następnie skompiluje projekt wykorzystując środowisko języka Erlang. W efekcie otrzymamy następujący log:
+
+#+begin_example
+==> mudserverproject (get-deps)
+Pulling lager from {git,"git://github.com/basho/lager.git",{tag,"2.0.0"}}
+Cloning into lager...
+...
+==> Entering directory ..
+==> goldrush (compile)
+Compiled src/glc_ops.erl
+...
+==> mudserverproject (compile)
+...
+Compiled src/mud_game.erl
+#+end_example
+
+#+latex: \noindent
+Serwer jest gotowy do użytkowania.
+
+* Instalacja
+Poniższe sekcje zawierają instrukcje instalacji oprogramowania serwera gry MUD dołączonego do projektu.
+
+#+latex: \noindent
+W celu użytkowania serwera gry niezbędne jest jedynie środowisko języka Erlang w wersji *R16B* (lub późniejszej). Do projektu dołączono zatem odpowiednie paczki instalacyjne (na platformę Debian Wheezy 64 bit oraz Windows 32 bit) a poniższe instrukcje zakładają, że zostały one zainstalowanie na maszynie docelowej.
+
+#+latex: \noindent
+Niestety, z powodu ograniczeń czasowych nie udało się stworzyć automatycznych instalatorów instalujących oprogramowanie "jednym kliknięciem".
+
+** Platforma *nix
+Do projektu zostało dołączone archiwum ze skompilowaną wersją serwera. Wystarczy je jedynie odpakować by serwer był gotowy do użytkowania:
+
+#+begin_example
+$ cd path/to/projekt
+$ tar -xf mudserver.tar.gz
+#+end_example
+
+** Platforma Windows
+Podobnie, jak w przypadku platformy *nix, na platformie Windows wystarczy jedynie rozpakować archiwum serwera (to samo archiwum jest wykorzystywane na obu platformach) by było on gotowy do użytkowania:
+
+#+begin_example
+...Wykorzystanie graficznego narzędzia do rozpakowania dołączonego archiwum mudserver.zip
+#+end_example
+
+* Wskazówki użytkowania
+Niniejsza sekcja opisuje najważniejsze aspekty użytkowania serwera i dostarczanych przezeń funkcjonalności.
+** Konfiguracja
+Serwer gry, w związku z zastosowaną [[ref:arch][architekturą]] wykorzystuje dwa główne pliki konfiguracyjne. Niestety, z powodu ograniczeń czasowych nie udało się połączyć konfiguracji w jeden, wygodny plik.
+
+#+latex: \noindent
+Pierwszy plik konfiguracyjny (=./config/config.json=) jest wykorzystywany przez mid-end serwera, który zajmuje się obsługą sesji graczy. Ponieważ plik ten zawiera bardzo dużo opcji konfiguracji poniżej zostały zawarte jedynie najważniejsze jej elementy, a o pozostałych opcjach można przeczytać w [[https://github.com/brainly/hive/blob/master/docs/docs.pdf][zewnętrznej dokumentacji]].
+
+#+latex: \noindent
+Najważniejsze elementy konfiguracji:
+- =hive.port= - port, na którym użytkownicy będą mogli łączyć się do gry.
+- =hive.accepted_origins= - lista domen, które mogą połączyć się do serwera gry.
+- =api.port= - port, na którym mid-end udostępnia RESTowe API służące do zarządzania sesjami klientów.
+- =connectors.pools.backend.port= - port, na którym będzie dostępne API serwera odpowiedzialnego za logikę gry.
+
+#+latex: \noident
+Drugi plik konfiguracyjny (=./mud.config=) jest plikiem konigurującym działanie back-endu serwera - jego części odpowiedzialnej za obsługę logiki gry. Najważniejsze opcje:
+
+- =port= - port, na którym serwer gry będzie udostępniał swoje API (musi zgadzać się z =connectors.pools.backend.port=).
+- =(min|max)_allowed_nick_len= - (maksy|mini)malna długość nazwy gracza.
+- =stat_(min|max)= - (maksy|mini)malne zakresy losowych statystyk graczy generowane przy tworzeniu postaci.
+- =save_timeout= - interwał zapisów stanu gry.
+- =*_file= - nazwy plików świata gdy dla lokacji, graczy, przedmiotów i haseł graczy.
+- =hive_url= - URL pod którym będzie dostępne API mid-endu (przeważnie =localhost=, ale możliwe jest uruchomienie serwerów na osobnych maszynach).
+
+#+latex: \noindent
+Do serwera została dostarczona przykładowa konfiguracja, która pozwala na jego użytkowanie.
+
+** Uruchamianie
+Po zainstalowaniu/skompilowaniu i opcjonalnym przekonfigurowaniu serwera można przystąpić do jego uruchomienia. Procedura jest bardzo prosta - wystarczy z katalogu, w którym znajduje się serwer posłużyć się dołączonymi skryptami, w zależności od platformy - =start.sh= oraz =start.bat= - podając ścieżkę, w której znajdują się pliki świata gry (pliki =*.json=):
+
+- Windows:
+#+begin_example
+> cd C:\path\to\projekt
+> start.bat path/to/resources/
+#+end_example
+
+- *nix:
+#+begin_example
+$ cd path/to/projekt
+$ ./start.sh path/to/resources/
+#+end_example
+
+#+latex: \noindent
+Do projektu dołączono przykładowe pliki świata (dostępne w archiwum =sampleworld.tar.gz= i =sampleworld.zip=).
+
+** Wykorzystanie wbudowanego nadzorcy systemu
+Ponieważ do implementacji wykorzystano środowisko Erlang, dziedziczy on wszystkie udostępniane przez nie narzędzia do zarządzania aplikacją, czyli tak zwanego *nadzorcę systemu* vel *obserwatora*. Aby go uruchomić należy uruchomić następującą komendę w *konsoli serwera* (jest to wywołanie funkcji języka Erlang):
+
+#+begin_example
+(mud_dev@host)1> observer:start().
+#+end_example
+
+#+latex: \noindent
+W efekcie otwarte zostanie okno obserwatora, w którym szczególnie interesujące są dwie zakładki:
+
+- *Load Charts* - zawierająca statystyki z działania serwera:
+#+begin_center
+#+attr_latex: scale=0.4
+[[file:./img/load.png]]
+#+end_center
+
+- *Applications* - pozwalająca przeglądać strukturę drzewa procesów, oraz zarządzać nim:
+#+begin_center
+#+attr_latex: scale=0.4
+[[file:./img/browser.png]]
+#+end_center
+
+** Logi i troubleshooting
+Serwer generuje dużą ilość przydatnych logów. Są one dostępne bezpośrednio w konsoli serwera, ale także w katalogu =./log/mud/=, gdzie:
+
+- *console.log* - log konsoli zawierający wszystkie logi ważniejsze lub równoważne poziomowi =info=,
+- *error.log* - log konsoli zawierający wszystkie logi ważniejsze lub równaważne poziomomi =error=,
+- *crash.log* - log "crash'y" serwera, który miejmy na dzieje nigdy nie powstanie ;-)
+
+* Implementacja
+Ostatnia sekcja tego dokumentu zawiera informacje o implementacji serwera gry MUD.
+
+** Architektura serwera gry
+# <<<ref:arch>>>
+
+Poniższy schemat pokazuje architekturę serwera gry wyszczególniając poszczególne jego elementy i drogi komunikacji w nim występujące:
+
+#+begin_center
+#+attr_latex: scale=0.8
+[[file:./img/arch.pdf]]
+#+end_center
+
+*** Komunikacja z klientami
+Komunikacja Klient-Serwer przebiega za pośrednictwem protokołu *Socket.IO* oraz subprotokołów *WebSocket* i *XHR-polling*, dzięki czemu zapewniona jest szybka komunikacja na zasadzie aplikacji *Comet'owej*. Klienci są odpowiedzialni za połączenie się z serwerem oraz przeprowadzenia handshake'u Socket.IO. Następnie cała komunikacja odbywa się na zasadzie asynchronicznego przekazywania *event'ów*. Szczegóły zastosowanego protokołu wymiany danych zostały zawarte w [[ref:protocol][następnej sekcji]].
+
+*** Mid-end - Hive
+Głównym punktem wejściowym aplikacji jest szybki serwer Socket.IO (napisany przez autora tego dokumentu i wykorzystywany z powodzeniem w dużo więszych projektach =</shameless-selfplug>=) nazwany *Hive*. Hive zajmuje się zarządzaniem sesjami klientów oraz pośredniczeniem w komunikacji między logiką biznesową aplikacji oraz klientami.
+
+#+latex: \noindent
+Serwer Hive udostępnia liczne usługi dla obu stron komunikacji:
+
+- *kanały Publisher-Subscriber* wykorzystywane w porojekcie do łatwego propagowania zdarzeń.
+
+- *Key-Value store* na tymczasowe dane dotyczące sesji klienta umożliwiające wykorzystanie bazy danych *Redis* lub przechowywanie ich lokalnie w pamięci.
+
+#+latex: \noindent
+Komunikacja w obrębie mid-endu przebiega *natywnie* poprzez wysyłanie wiadomości Erlanga. Więcej o serwerze Hive można dowiedzieć się z [[https://github.com/brainly/hive/][zewnętrznego źródła]].
+
+*** Back-end - Logika
+Logika gry została zaimplementowana jako dwa oddzielne serwery (a właściwie serwer główny i drobne, autonomiczne maszyny stanów - *FSM* - implementujące logikę sztucznej inteligencji gry). Serwer wykorzystuje JSONową bazę danych *NoSQL* - filesystem maszyny, na której jest uruchomiony ;-)
+
+#+latex: \noindent
+Serwer logiki odpowiada za wykonywanie akcji graczy i zarządzanie stanem świata gry. Logiką autonomicznych jednostek obecnych w świecie gry, a nie będących graczami zajmują sie małe maszyny stanów, które są [[ref:ai][w pełni skryptowalne]] w języku Erlang. Umożliwiają one odciążenie serwera głównego oraz lepszą organizację przepływu danych w całym systemie.
+
+#+latex: \noindent
+Komunikacja w obrębie back-endu przebiega drogą natywną - za pośrednictwem przesyłania wiadomości Erlanga. Dodatkowo warto jest zauważyć, że maszyny stanów sztucznej inteligencji spoof'ują procesy użytkowników systemu podłączając się bezpośrednio do usług mid-endu.
+
+** Protokół komunikacji
+# <<<ref:protocol>>>
+*** Socket.IO
+Serwer korzysta z protokołu Socket.IO do komunikacji:
+- specyfikacja - https://github.com/LearnBoost/socket.io-spec
+- referencyjna implementacja klienta - https://github.com/LearnBoost/socket.io-client
+
+#+latex: \noindent
+...oraz dwóch protokołów transportujących:
+- WebSocket - http://en.wikipedia.org/wiki/WebSocket
+- XHR-polling - [[http://en.wikipedia.org/wiki/Comet_(programming)#XMLHttpRequest_long_polling]]
+
+**** Klient przeglądarkowy
+Implementacja klienta przeglądarkowego może wykorzystać gotowego klienta Socket.IO wymienionego powyżej.
+
+**** Klient desktopowy
+Implementacja klienta desktopowego może wykorzystać dowolną bibliotekę kliencką Socket.IO:
+- https://github.com/benkay/java-socket.io.client (Java)
+- https://github.com/Gottox/socket.io-java-client (Java)
+- https://pypi.python.org/pypi/socketIO-client (Python)
+- http://socketio4net.codeplex.com/ (.NET)
+
+#+latex: \noindent
+...lub wykorzystać gołe połączenie WebSocket:
+- http://docs.oracle.com/javaee/7/tutorial/doc/websocket.htm (Java)
+- http://java-websocket.org/ (Java)
+- https://pypi.python.org/pypi/websocket-client/0.4 (Python)
+
+#+latex: \noindent
+...oraz prosty parser wiadomości Socket.IO zakładający, że przyjmowane będą następujące wiadomości:
+
+#+begin_example
+"1:::" - po nawiązaniu połączenia z serwerem,
+"5:::JSON" - przy każdym evencie, gdzie "JSON" to zakodowany w JSONie event gry (więcej poniżej),
+"8:::" - po okresie bez żadnej aktywności,
+"0:::" - po rozłączeniu z serwerem,
+#+end_example
+
+#+latex: \noindent
+Ostatnia opcja będzie wymagała samodzielnego przeprowadzenia połączenia z serwerem poprzez HTTP oraz następnie połączenia WebSocket pod odpowiedni przydzielony przez serwer URL.
+
+*** Event'y gry
+Komunikacja z serwerem odbywa się tylko i wyłącznie przez event'y zakodowane jako krótkie JSON'y.
+Każdy event wysyłady do/przychodzący z serwera musi być następującej postaci:
+
+#+begin_src javascript
+  {
+      "name" : nazwa_eventu,
+      "args" : argumenty_eventu
+  }
+#+end_src
+
+#+latex: \noindent
+Konkretny format argumentów zależy od typu event'u i będzie opisany [[ref:commands][poniżej]].
+
+*** Błędy sewera
+Błędy serwera są przekazywane jako specjalny event =hive_error=, więc mogą być obsułgiwane w taki sam sposób, jak pozostałe event'y.
+
+#+begin_src javascript
+  {
+      "name" : "hive_error",
+      "args" : {
+          "error" : kod_bledu,
+          "description" : opis_bledu
+      }
+  }
+#+end_src
+
+*** Autoryzacja
+Przed rozpoczęciem gry gracz musi się autoryzować na swoje konto wysyłając następujący event:
+
+#+begin_src javascript
+  {
+      "name" : "authorize",
+      "args" : [
+          {
+              "nick" : login,
+              "password" : hash_hasla
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie =login= to wybrany Nick gracza, a =hash_hasla= to hash *SHA1* otrzymany z wybranego przez gracza hasła, posolonego jego nazwą użytkownika:
+
+#+begin_src javascript
+nickname = "Nickname";
+password = "Password"
+// (nickname + password) == "NicknamePassword"
+hash = sha1(nickname + password);
+// hash == "ca805ddc46b39fc3cb1099ec5442b9c7aae49e47"
+#+end_src
+
+#+latex: \noindent
+W odpowiedzi otrzymamy:
+
+#+begin_src javascript
+  {
+      "name" : "authorize",
+      "args" : [
+          {
+              "permission" : wynik_autoryzacji
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= odpowiednio dla powodzenia i niepowodzenia autoryzacji.
+
+*** Tworzenie postaci
+Tworzenie nowej postaci przebiega bardzo prosto - przeprowadzamy autoryzację do serwera podając nowy nick i nowe hasło. Jeśli postać o takim nicku nie istnieje konto zostanie utworzone, a serwer w odpowiedzi zwróci:
+
+#+begin_src javascript
+  {
+      "name" : "authorize",
+      "args" : [
+          {
+              "permission" : wynik_autoryzacji
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie =wynik_autoryzacji= to string =granted= lub wartość =null= (odpowiadająca sytuacji, gdy nick został już przez kogoś zajęty).
+
+#+latex: \noindent
+*Obecnie nie mam w planach dodawania zmiany hasła itd, więc będzie to jedyny sposób tworzenia nowych kont graczy.*
+
+*** "Wejście" do gry
+Bezpośrednio po wejściu do gry otrzymamy kilka event'ów opisujących świat gry, w którym się znajdujemy i wydarzenia w nim się odbywające:
+
+- =location_info= - opisane przy okazji komendy [[ref:examine][examine]],
+- =character_info= - opisane przy okazji komendy [[ref:examine][examine]],
+- =player_enters= - opisane przy okazji komendy [[ref:move][move]]
+
+*** Rozmowa
+Rozmowa odbywa się przez wysłanie eventu =say= zawierającego typ wypowiedzi oraz jej tekst:
+
+#+begin_src javascript
+  {
+      "name" : "say",
+      "args" : [
+          {
+              "text" : wiadomosc,
+              "type" : typ_wiadomosci
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+=wiadomosc= zawiera tekst wysyłanej wiadomości. =typ_wiadomosci= zawiera krótki string prezentujący typ wypowiedzi (na przykład =says=, =whispers=, =yells=, etc) dla potrzeb kosmetycznych. W efekcie otrzymamy event:
+
+#+begin_src javascript
+  {
+      "name" : "msg",
+      "args" : [
+          {
+              "nick" : nazwa_gracza,
+              "type" : typ_wypowiedzi,
+              "text" : tekst_wypowiedzi
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+Taki sam event dostaniemy przy każdej wypowiedzi innych graczy.
+
+*** Komendy gracza
+Interakcję ze światem gry umożliwiają graczowi komendy, które są przesyłane poprzez event =do=:
+
+#+begin_src javascript
+  {
+      "name" : "do",
+      "args" : [komenda]
+  }
+#+end_src
+
+#+latex: \noindent
+W przypadku podania błędnych argumentów dla komendy otrzymamy następujący event zawierający =opis= problemu:
+
+#+begin_src javascript
+  {
+      "name" : "bad_command",
+      "description" : opis
+  }
+#+end_src
+
+#+latex: \noindent
+Więcej o dostępnych komendach [[ref:commands][tutaj]].
+
+** Dostępne komendy
+# <<<ref:commands>>>
+*** =examine=
+# <<<ref:examine>>>
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "examine",
+      "args" : id_obiektu
+  }
+#+end_src
+
+#+latex: \noindent
+=id_obiektu= może być nazwą gracza/NPC/przeciwnika, identyfikatorem lokacji lub identyfikatorem przedmiotu osiągalnego z lokacji, w które aktualnie znajduje się gracz. W zależności od typu obiektu w odpowiedzi otrzymamy:
+
+#+begin_src javascript
+  {
+      "name" : "character_info",
+      "args" : [opis_gracza]
+  }
+  // ...lub:
+  {
+      "name" : "location_info",
+      "args" : [opis_lokacji]
+  }
+  // ...lub:
+  {
+      "name" : "item_info",
+      "args" : [opis_przedmiotu]
+  }
+#+end_src
+
+#+latex: \noindent
+Więcej o =opisie_gracza= [[ref:character][tutaj]], więcej o =opisie_lokacji= [[ref:location][tutaj]], więcej o =opisie_przedmiotu= [[ref:item][tutaj]].
+
+*** =move=
+# <<<ref:move>>>
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "move",
+      "args" : id_lokacji
+  }
+#+end_src
+
+#+latex: \noindent
+=id_lokacji= musi być prawidłowym ID lokacji osiągalnej z lokacji, w której aktualnie znajduje się gracz. W odpowiedzi gracz zostanie przeniesiony do nowej lokacji i otrzyma następujący event:
+
+#+begin_src javascript
+  {
+      "name" : "location_info",
+      "args" : [opis_lokacji]
+  }
+#+end_src
+
+#+latex: \noindent
+Dodatkowo zostaną wygenerowane dwa event'y propagowane do wszystkich graczy obecnych w starej i nowej lokacji gracza:
+
+#+begin_src javascript
+  {
+      "name" : "player_leaves",
+      "args" : [
+          {
+              "location" : nazwa_opuszczanej_lokacji,
+              "nick" : nick_opuszczajacego_gracza
+          }
+      ]
+  }
+  
+  {
+      "name" : "player_enters",
+      "args" : [
+          {
+              "location" : nazwa_nowe_lokacji,
+              "nick" : nick_gracza
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+Event'y te istnieją z czysto kosmetycznych względów.
+
+#+latex: \noindent
+Więcej o =opisie_lokacji= [[ref:location][tutaj]].
+
+*** =attack=
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "attack",
+      "args" : nazwa_gracza
+  }
+#+end_src
+
+#+latex: \noindent
+=nazwa_gracza= musi być prawidłowym ID gracza/przeciwnika/NPC obecnego w lokacji, w której aktualnie znajduje się gracz. W odpowiedzi gracz zaatakuje =nazwa_gracza= i otrzyma następujący event:
+
+#+begin_src javascript
+  {
+      "name" : "battle",
+      "args" : [
+          {
+              "attacker" : nazwa_gracza_atakujacego,
+              "defender" : nazwa_drugiego_gracza,
+              "type" : typ_wydarzenia,
+              "value" : wartosc_wydarzenia
+          }
+      ]
+  }
+#+end_src
+
+#+latex: \noindent
+=typ_wydarzenia= zawiera typ zaistniałego wydarzenia (na przykład "hit", "miss", "kill"); jeśli obecne jest pole =wartosc_wydarzenia= zawiera ono wartość liczbową opisującą zdarzenie (na przykład dla typu "hit" =wartosc_wydarzenia= będzie opisywała siłę uderzenia). Podobne event dostaną wszyscy gracze obecni w danej lokacji. Wykonanie tej komendy może rozzłościć NPC lub przeciwnika prowadząc do walki na śmierć i życie (lub ucieczkę do innej lokacji). W przypadku śmierci któregoś z graczy otrzymamy taki sam event ze stosownym opisem natomiast przegrany gracz zostanie usunięty z obecnej lokacji (jego przedmioty w niej zostają).
+
+*** =take= / =drop=
+Przykład:
+#+begin_src javascript
+  {
+      "action" : "take"/"drop",
+      "args" : id_przedmiotu
+  }
+#+end_src
+
+#+latex: \noindent
+=id_przedmiotu= musi być prawidłowym ID przedmiotu obecnego w lokacji, w której aktualnie znajduje się gracz (lub w jego inwentarzu). W odpowiedzi przedmiot zostanie przeniesiony do inwentarza gracza (lub do lokacji, w której obecnie się znajduje) i otrzymamy nastepujący event:
+
+#+begin_src javascript
+  {
+      "name" : "inventory_update",
+      "args" : {
+          "nick" : nazwa_gracza,
+          "type" : typ_aktualizacji,
+          "id" : id_przedmiotu,
+          "name" : nazwa_przedmiotu
+      }
+  }
+#+end_src
+
+#+latex: \noindent
+Event taki otrzymamy także w wyniku akcji innego gracza znajdującego się w tej samej lokalizacji. Więcej o przedmiotach [[ref:item][tutaj]].
+
+** Reprezentacja świata gry
+Poniższe sekcje zawierają opisy różnych obiektów świata gry, które mogą się zmieniać w trakcie gry w reakcji na akcje graczy.
+
+#+latex: \noindent
+Serwer spodziewa się pojedynczych plików zawierających JSON'owe array'e obiektów opisanych poniżej (przykładowy świat dostępny jest [[https://github.com/Idorobots/zpi-mud/tree/master/resources][tutaj]]). Dodatkowo serwer zakłada, że wszelkie identyfikatory (=id= dla lokacji i przedmiotów oraz =nick= dla graczy) są *unikatowe*.
+
+*** Gracze/NPC/Przeciwnicy
+# <<<ref:character>>>
+Stan gracza można zrozumieć jako następujący JSON:
+
+#+begin_src javascript
+  {
+      "nick" : nazwa_gracza,
+      "stats" : {
+          "health" : zdrowie,
+          "strength" : sila,
+          "toughness" : odpornosc
+      },
+      "inventory" : inventarz
+  }
+#+end_src
+
+- =nazwa_gracza= jest unikatową nazwą gracza identyfikującą go w świecie gry,
+- =zdrowie= jest liczbą całkowitą określającą poziom zdrowia gracza (po osiąginięciu wartości <= 0 gracz ginie),
+- =sila= jest liczbą całkowitą określającą siłę gracza, która odpowiada za siłę jego ataków,
+- =odpornosc= jest liczbą całkowitą określającą wytrzymałość gracza, która odpowiada za odporność na ataki innych graczy,
+- =inventarz= jest obiektem zawierającym ID przedmiotów posiadanych przez gracza:
+
+#+begin_src javascript
+  {
+      id_przedmiotu : nazwa_przedmiotu,
+      ...
+  }
+#+end_src
+
+#+latex: \noindent
+Wszystkie powyższe wartości, poza =nazwa_gracza= mogą ulegać zmianie w trakcie gry.
+
+*** Lokacje
+# <<<ref:location>>>
+Stan lokacji przedstawia następujący JSON:
+
+#+begin_src javascript
+  {
+      "id" : id_lokacji,
+      "name" : nazwa_lokacji,
+      "description" : opis_lokacji,
+      "players" : gracze_w_lokacji,
+      "items" : przedmioty_w_lokacji,
+      "locations" : drogi_do_innych_lokacji
+  }
+#+end_src
+- =id_lokacji= jest unikatowym indentyikatorem lokacji,
+- =nazwa_lokacji= jest krótkim stringiem będącym nazwą lokacji,
+- =opis_lokacji= zawiera krótki opis tego, co znajduje się w danej lokacji,
+- =gracze_w_lokacji= jest array'em nazw graczy/NPC/przeciwników znajdujących się w danej lokacji,
+- =przedmioty_w_lokacji= jest obiektem zawierającym ID przedmiotów znajdujących się w danej lokacji:
+
+#+begin_src javascript
+  {
+      id_przedmiotu : nazwa_przedmiotu,
+      ...
+  }
+#+end_src
+
+- =drogi_do_innych_lokacji= jest obiektem zawierającym ścieżki do innych lokacji:
+
+#+begin_src javascript
+  {
+      droga_1 : id_lokacji_1,
+      droga_2 : id_lokacji_2
+  }
+#+end_src
+
+#+latex: \noindent
+...gdzie każda =droga= jest unikatową nazwą ścieżki a każde =id_lokacji= unikatowym identyfikatorem lokacji, na przykład:
+
+#+begin_src javascript
+  {
+      "north" : "starting_tavern",
+      "south" : "deep_woods"
+  }
+#+end_src
+
+*** Przedmioty
+# <<<ref:item>>>
+Opis przedmiotów dostępnych w świecie przedstiawia nostępujący JSON:
+
+#+begin_src javascript
+  {
+      "id" : id_przedmiotu,
+      "name" : nazwa_przedmiotu,
+      "description" : opis_przedmiotu,
+      "modifiers" : {
+          "health" : zdrowie,
+          "strength" : sila,
+          "toughness" : odpornosc
+      }
+  }
+#+end_src
+
+- =id_przedmiotu= jest unikatowym identyfikatorem przedmiotu,
+- =nazwa_przedmiotu= to krótki string reprezentujący nazwę przedmiotu,
+- =opis_przedmiotu= to krótki string opisujący przedmiot,
+- =zdrowie= jest liczbą całkowitą określającą modyfikator zdrowia gracza,
+- =sila= jest liczbą całkowitą określającą modyfikator siły gracza,
+- =odpornosc= jest liczbą całkowitą określającą modyfikator wytrzymałości gracza,
+
+** AI - sztuczna inteligencja
+# <<<ref:ai>>>
+
+Dzięki skryptowej naturze języka implementacji serwera możliwe było stworzenie prostego systemu sztucznej inteligencji opartego o moduły języka Erlang - tworzone są autonomiczne i lekkie maszyny stanów reprezentujące postaci sterowane przez AI.
+
+*** Skrypty AI
+Głównym zadaniem skryptów jest zapewnienie obsługi event'ów gry przy jednoczesnej modyfikacji zachowania w zależności od stanu maszyny. Obecnie wyróżniane są trzy stany - *friendly*, *neutral* oraz *hostile*. Możniwa jest także obsługa innych event'ów, które nie zależą od stanu, gdzięki czemu można osiągnąć bardzo skomplikowane zachowanie w stosunkowo prosty sposób.
+
+#+latex: \noindent
+Struktura skryptów jest następująca:
+
+#+begin_src erlang
+-module(some_ai_module).
+-author('kajtek@idorobots.org').
+
+-export([init/1, on_friendly/3, on_neutral/3, on_hostile/3, on_info/3]).
+-include("mud_ai.hrl").
+
+init(State) ->
+    %% Inicjalizacja maszyny stanów.
+    {ok, neutral, State}.
+
+on_friendly(Name, _Args, State) ->
+    %% Obsługa event'u Name w stanie Friendly.
+    {ok, friendly, State}.
+
+on_neutral(Name, _Args, State) ->
+    %% Obsługa event'u Name w stanie Neutral.
+    {ok, neutral, State}.
+
+on_hostile(Name, _Args, State) ->
+    %% Obsługa event'u Name w stanie Hostile.
+    {ok, hostile, State}.
+
+on_info(Info, StateName, State) ->
+    %% Obsługa event'u Info nie zależącego od stanu maszyny.
+    {ok, StateName, State}.
+#+end_src
+
+*** Wbudowane skrypty
+W związku z ograniczeniem czasowym nałożonym na projekt do projektu dołączone jedynie jeden skrypt AI prezentujący jak największą ilość udostępnionych przez system AI funkcjonalności. Skrypt ten, =generic_npc= jest wbudowany w serwer i wykorzystywany jako skrypt domyśly dla każdej postaci nie będącej postacią gracza.
