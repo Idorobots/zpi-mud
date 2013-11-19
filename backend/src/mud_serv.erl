@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% HTTP server used to expose the RESTful backend API.
 
 -module(mud_serv).

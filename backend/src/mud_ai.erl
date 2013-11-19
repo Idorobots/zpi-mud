@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% A generic module providing AI controler for the characters.
 %% Can be parameterized by a specific, swappable handler module - AI is fully scriptable using Erlang.
 %% Currently AI scripts assume to handle various game events while being in a certain state

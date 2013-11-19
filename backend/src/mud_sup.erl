@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% The top-level MUD supervisor - manages the failures & restarts of the entire application.
 
 -module(mud_sup).

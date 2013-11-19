@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% Various utilities used throughout the code.
 %% Mostly data handling & API calls handling.
 

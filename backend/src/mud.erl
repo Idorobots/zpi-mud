@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% The main entry point of the application.
 %% Starts the backend Game server & the midend Hive session management server.
 

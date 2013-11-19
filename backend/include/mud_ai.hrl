@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% AI related definitions.
 
 -author('kajtek@idorobots.org').

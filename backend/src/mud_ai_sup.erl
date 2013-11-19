@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% AI processes supervisor - manages AI failures & restarts.
 
 -module(mud_ai_sup).

@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% HTTP handler for the server, translates Hive backend calls into MUD API calls.
 
 -module(mud_handler).

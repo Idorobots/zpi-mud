@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% Central Game logic responsible for the Game World management.
 
 -module(mud_game).

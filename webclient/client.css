@@ -1,5 +1,9 @@
+/**
+ * @note: Licensed under the MIT license. See included LICENSE file for details.
+ * @author: kajtek@idorobots.org
+ */
 html {
-    background: #8B4513 url('killingtheioagain.png')  no-repeat bottom center;
+    background: #8B4513 url('back.png')  no-repeat bottom center;
 }
 
 body {

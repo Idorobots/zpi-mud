@@ -1,3 +1,5 @@
+%% NOTE Licensed under the MIT license. See included LICENSE file for details.
+
 %% A generic AI script for an NPC.
 %% NPC using this script will respond to some inputs and attack the player if disturbed.
 
