@@ -1,5 +1,8 @@
+%% AI processes supervisor - manages AI failures & restarts.
+
 -module(mud_ai_sup).
 -behaviour(supervisor).
+-author('kajtek@idorobots.org').
 
 -export([start_link/0, init/1]).
 

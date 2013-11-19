@@ -1,4 +1,8 @@
+%% A generic AI script for an NPC.
+%% NPC using this script will respond to some inputs and attack the player if disturbed.
+
 -module(generic_npc).
+-author('kajtek@idorobots.org').
 
 -export([init/1, on_friendly/3, on_neutral/3, on_hostile/3, on_info/3]).
 
@@ -7,9 +11,12 @@
 -include("mud_ai.hrl").
 
 %% NPC callbacks:
+
+%% Initializes the NPC:
 init(State) ->
     {ok, neutral, State}.
 
+%% Handles asynchronous events such as timeouts:
 on_info({attack, Who, Delay}, StateName, State) ->
     do_attack(Who, State),
     case State#state.target of
@@ -25,6 +32,7 @@ on_info({say, How, What}, StateName, State) ->
 on_info(Info, StateName, State) ->
     {ok, StateName, State}.
 
+%% Handles game events while in 'friendly' state:
 on_friendly(<<"battle">>, _Args, State) ->
     say(100, <<"Hmph...">>, State),
     {ok, neutral, State};
@@ -43,6 +51,7 @@ on_friendly(<<"msg">>, [Speech], State) ->
 on_friendly(_Name, _Args, State) ->
     {ok, friendly, State}.
 
+%% Handles game events while in 'neutral' state:
 on_neutral(<<"battle">>, [Battle], State) ->
     Nick = State#state.nick,
     Attacker = prop(<<"attacker">>, Battle),
@@ -92,6 +101,7 @@ on_neutral(<<"msg">>, [Speech], State) ->
 on_neutral(_Name, _Args, State) ->
     {ok, neutral, State}.
 
+%% Handles game events while in 'hostile' state:
 on_hostile(<<"battle">>, [Battle], State) ->
     Nick = State#state.nick,
     Target = State#state.target,

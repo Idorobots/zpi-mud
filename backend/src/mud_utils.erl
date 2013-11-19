@@ -1,4 +1,9 @@
+%% Various utilities used throughout the code.
+%% Mostly data handling & API calls handling.
+
 -module(mud_utils).
+-author('kajtek@idorobots.org').
+
 -export([publish/2, sid/1, trigger/1, state/1, file_to_json/1, prop/2, prop/3]).
 -export([mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
 -export([json_to_file/2, mk_event/2, str_join/2, str_cat/2, data/1, data/2]).

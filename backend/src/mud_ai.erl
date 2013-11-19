@@ -1,5 +1,15 @@
+%% A generic module providing AI controler for the characters.
+%% Can be parameterized by a specific, swappable handler module - AI is fully scriptable using Erlang.
+%% Currently AI scripts assume to handle various game events while being in a certain state
+%% (one of 'friendly', 'neutral' or 'hostile'). AI also supports other asynchronous events that
+%% don't depend on "friendliness" of a character.
+
+%% NOTE This module spoofs the Hive client behaviour,
+%% NOTE meaning it acts on the same messages & returns specifically prepared values.
+
 -module(mud_ai).
 -behaviour(gen_fsm).
+-author('kajtek@idorobots.org').
 
 -export([start_link/2, init/1, terminate/3]).
 -export([code_change/4, handle_event/3, handle_sync_event/4, handle_info/3]).
@@ -32,10 +42,15 @@ init({Nick, NPC}) ->
 terminate(_Reason, _StateName, State) ->
     mud_game:cleanup(data(State#state.state)).
 
-%% External functions:
+%% External functions (AI API):
+
+%% Used to spoof Hive clients Pub-Sub subscriptions.
+%% More info available in the Hive docs.
 subscribe(Sid, Channel) ->
     gen_fsm:send_all_state_event(Sid, {subscribe, Channel}).
 
+%% Used to spoof Hive clients Pub-Sub unsubscriptions.
+%% More info available in the Hive docs.
 unsubscribe(Sid, Channel) ->
     gen_fsm:send_all_state_event(Sid, {unsubscribe, Channel}).
 
@@ -63,6 +78,8 @@ code_change(_Vsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
 %% Gen FSM states:
+
+%% Temporary, startup state which only performs character authorization.
 transient({authorize, Nick, Password, Location}, State) ->
     Auth = mk_event(<<"authorize">>,
                     [[{<<"nick">>, Nick},
@@ -78,6 +95,7 @@ transient(Event, State) ->
     lager:warning("Received an unhandled event: ~p", [Event]),
     {next_state, transient, State}.
 
+%% When the NPC is friendly towards other characters.
 friendly({dispatch_events, Event}, State) ->
     Handler = State#state.handler,
     JSON = jsonx:decode(preprocess(Event), [{format, proplist}]),
@@ -86,6 +104,7 @@ friendly({dispatch_events, Event}, State) ->
     {ok, StateName, NewState} = Handler:on_friendly(Name, Args, State),
     {next_state, StateName, NewState}.
 
+%% When the NPC is neutral towards other characters.
 neutral({dispatch_events, Event}, State) ->
     Handler = State#state.handler,
     JSON = jsonx:decode(preprocess(Event), [{format, proplist}]),
@@ -94,6 +113,7 @@ neutral({dispatch_events, Event}, State) ->
     {ok, StateName, NewState} = Handler:on_neutral(Name, Args, State),
     {next_state, StateName, NewState}.
 
+%% When the NPC is hostile towards other characters.
 hostile({dispatch_events, Event}, State) ->
     Handler = State#state.handler,
     JSON = jsonx:decode(preprocess(Event), [{format, proplist}]),
@@ -106,6 +126,8 @@ hostile({dispatch_events, Event}, State) ->
 get_handler(Type) ->
     known_type(list_to_atom(binary_to_list(Type))).
 
+%% NOTE ATM only ony type of NPC behaviour is accepted.
+%% FIXME Deal with it. *sunglasses*
 known_type(_Type) ->
     generic_npc.
 

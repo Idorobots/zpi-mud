@@ -1,5 +1,8 @@
+%% HTTP handler for the server, translates Hive backend calls into MUD API calls.
+
 -module(mud_handler).
 -behaviour(cowboy_http_handler).
+-author('kajtek@idorobots.org').
 
 -export([init/3, handle/2, terminate/3]).
 

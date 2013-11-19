@@ -1,5 +1,8 @@
+%% Central Game logic responsible for the Game World management.
+
 -module(mud_game).
 -behaviour(gen_server).
+-author('kajtek@idorobots.org').
 
 -export([start_link/1, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([authorize/1, say/1, do/1, cleanup/1, npcize/1, npcize/2, move/2, status/0]).
@@ -8,17 +11,17 @@
 -import(mud_utils, [mk_error/1, mk_reply/2, mk_store/1, update/3, subscribe/2, unsubscribe/2, remove/2]).
 -import(mud_utils, [mk_event/2]).
 
+%% The game state:
 -record(state, {
-          ai_supervisor = undefined,
-          online_players = [],
-          locations = [],
-          starting_location = <<"">>,
-          players = [],
-          passwd = [],
-          items = []
+          ai_supervisor     = undefined, %% AI supervisor.
+          online_players    = [],        %% List of players currently online.
+          locations         = [],        %% The Game world.
+          starting_location = <<"">>,    %% The location used when spawning new characters.
+          players           = [],        %% Character data.
+          passwd            = [],        %% Character password & temporary data.
+          items             = []         %% Item data.
          }).
 
-%% This is a tiny wrapper that makes restarts of various Hive HTTP servers predictable and well-behaved.
 %% Gen server callbacks:
 start_link(Supervisor) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Supervisor, []).
@@ -35,6 +38,9 @@ terminate(Reason, _State) ->
     ok.
 
 %% Game API:
+
+%% Used by the players & AI server to authorize characters.
+%% Takes a client state JSON as defined in Hive docs.
 authorize(Data) ->
     Trigger = prop(<<"trigger">>, Data),
     [Args] = prop(<<"args">>, Trigger),
@@ -43,6 +49,8 @@ authorize(Data) ->
                               prop(<<"password">>, Args),
                               sid(Data)}) .
 
+%% Used by the players & AI server to post speech messages.
+%% Takes a client state JSON as defined in Hive docs.
 say(Data) ->
     Trigger = trigger(Data),
     [Args] = prop(<<"args">>, Trigger),
@@ -51,6 +59,8 @@ say(Data) ->
                               prop(<<"text">>, Args),
                               state(Data)}).
 
+%% Used by the players to trigger certain commands.
+%% Takes a client state JSON as defined in Hive docs.
 do(Data) ->
     Trigger = trigger(Data),
     [Args] = prop(<<"args">>, Trigger),
@@ -60,24 +70,34 @@ do(Data) ->
                               sid(Data),
                               state(Data)}).
 
+%% Used to perform all necessary cleanup on character log-out.
+%% Takes a client state JSON as defined in Hive docs.
 cleanup(Data) ->
     gen_server:cast(?MODULE, {cleanup,
                               sid(Data),
                               state(Data)}).
 
-%% External functions:
+%% Other external functions (convenience API):
+
+%% Allows to turn all offline characters into NPCs.
+%% Takes a name of AI script to use for such an NPC.
 npcize(Strategy) ->
     npcize(all, Strategy).
 
+%% Ditto, except turns only a single character named Who into an NPC.
 npcize(Who, Strategy) when is_binary(Who) ->
     npcize([Who], Strategy);
 
+%% Ditto, except Who can either be a list of characters or the atom 'all'.
 npcize(Who, Strategy) when Who == all orelse is_list(Who) ->
     gen_server:cast(?MODULE, {npcize, Who, Strategy}).
 
+%% Allows to teleport characters around the Game world.
+%% Takes a name of the character to move and an ID of the destination.
 move(Who, Where) when is_binary(Who) andalso is_binary(Where) ->
     gen_server:cast(?MODULE, {move, Who, Where}).
 
+%% Dumps the current state of the Game world.
 status() ->
     gen_server:call(?MODULE, status).
 

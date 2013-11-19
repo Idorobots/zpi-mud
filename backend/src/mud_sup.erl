@@ -1,5 +1,8 @@
+%% The top-level MUD supervisor - manages the failures & restarts of the entire application.
+
 -module(mud_sup).
 -behaviour(supervisor).
+-author('kajtek@idorobots.org').
 
 -export([start_link/0, init/1]).
 
