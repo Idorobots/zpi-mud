@@ -1,1 +1,85 @@
-[{"id":"starting_tavern_rooms","name":"the second Tavern flood","description":"There are several locked rooms here.","players":[],"items":[],"locations":{"downstairs":"starting_tavern"}},{"id":"starting_tavern","name":"the Tavern","description":"A regular tavern, just as in any other RPG...","players":[],"items":{"pala_wodza":"Pała Wodza","long_sword_1":"Long sword"},"locations":{"upstairs":"starting_tavern_rooms","downstairs":"starting_tavern_basement"}},{"id":"starting_tavern_basement","name":"the Tavern basement","description":"A dark room full of nothing.","players":[],"items":[],"locations":{"upstairs":"starting_tavern"}}]
+[{
+  "id": "loc_9",
+  "name": "Dziedziniec",
+  "description": "Słoneczne miejsce",
+  "players": [
+    "Helga"
+  ],
+  "items": {
+    "item_1": "Skórzany kaptur",
+    "item_2": "Szczyt Aughilda",
+    "item_3": "Sandały Mezuta"
+  },
+  "locations": {
+    "południe": "loc_10"
+  }
+}
+,{
+  "id": "loc_10",
+  "name": "Brama",
+  "description": "Wielka drewniana brama",
+  "players": [
+    "Jaromir"
+  ],
+  "items": {},
+  "locations": {
+    "ukryte przejście": "loc_13",
+    "północ": "loc_9",
+    "wyjście z zamku": "loc_12"
+  }
+}
+,{
+  "id": "loc_12",
+  "name": "Most",
+  "description": "Mała kładka strzeżona przez trolla",
+  "players": [
+    "Troll"
+  ],
+  "items": {},
+  "locations": {
+    "powrót do zamku": "loc_10",
+    "droga za mostem": "loc_11"
+  }
+}
+,{
+  "id": "loc_11",
+  "name": "Las",
+  "description": "Mroczne miejsce pełne niebezpieczeństw",
+  "players": [],
+  "items": {
+    "item_6": "Kamień"
+  },
+  "locations": {
+    "powrót na most": "loc_12",
+    "wschód": "loc_14"
+  }
+}
+,{
+  "id": "loc_13",
+  "name": "Ogród",
+  "description": "Duży, piękny ogród pełen najrożniejszych kwiatów i owoców",
+  "players": [
+    "Matthaus"
+  ],
+  "items": {
+    "item_8": "Jabłko"
+  },
+  "locations": {
+    "brama": "loc_10"
+  }
+}
+,{
+  "id": "loc_14",
+  "name": "Przełęcz",
+  "description": "Długa przełęcz. Podejrzanie pusto i cicho..",
+  "players": [
+    "Mowiący jeleń"
+  ],
+  "items": {
+    "item_5": "Drewniana skrzynia"
+  },
+  "locations": {
+    "las": "loc_13"
+  }
+}
+]

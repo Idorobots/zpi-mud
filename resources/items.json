@@ -1,1 +1,71 @@
-[{"id":"pala_wodza","name":"Pała Wodza","description":"To the infinity and beyond!","modifiers":{"health":25,"strength":25,"toughness":25}},{"id":"short_sword_1","name":"Short sword","description":"A short, double-edged sword.","modifiers":{"health":0,"strength":10,"toughness":5}},{"id":"long_sword_1","name":"Long sword","description":"A long, double-edged sword.","modifiers":{"health":0,"strength":20,"toughness":10}},{"id":"steel_shield_1","name":"Steel shield","description":"A durable shield made out of steel.","modifiers":{"health":0,"strength":0,"toughness":20}},{"id":"wooden_shield_1","name":"Wooden shield","description":"Two wooden planks slapped together by an amateur.","modifiers":{"health":0,"strength":0,"toughness":10}},{"id":"steel_armor_1","name":"Steel armor","description":"An armor made of the highest quality steel available.","modifiers":{"health":15,"strength":0,"toughness":25}}]
+[{
+  "id": "item_3",
+  "name": "Sandały Mezuta",
+  "description": "Sandały martwego posłańca",
+  "modifiers": {
+    "health": 0,
+    "strength": 0,
+    "toughness": 4
+  }
+}
+,{
+  "id": "item_5",
+  "name": "Drewniana skrzynia",
+  "description": "Tajemnicza skrzynia",
+  "modifiers": {
+    "health": 0,
+    "strength": 0,
+    "toughness": 0
+  }
+}
+,{
+  "id": "item_6",
+  "name": "Kamień",
+  "description": "Czarny kamień",
+  "modifiers": {
+    "health": 0,
+    "strength": 0,
+    "toughness": 0
+  }
+}
+,{
+  "id": "item_1",
+  "name": "Skórzany kaptur",
+  "description": "Stary skórzany kaptur",
+  "modifiers": {
+    "health": 3,
+    "strength": 3,
+    "toughness": 0
+  }
+}
+,{
+  "id": "item_7",
+  "name": "Miecz",
+  "description": "Nieduże ostrze",
+  "modifiers": {
+    "health": 0,
+    "strength": 2,
+    "toughness": 0
+  }
+}
+,{
+  "id": "item_8",
+  "name": "Jabłko",
+  "description": "Samo zdrowie",
+  "modifiers": {
+    "health": 6,
+    "strength": 0,
+    "toughness": 0
+  }
+}
+,{
+  "id": "item_2",
+  "name": "Szczyt Aughilda",
+  "description": "Hełm z kuźni Azerothu",
+  "modifiers": {
+    "health": 15,
+    "strength": 6,
+    "toughness": 0
+  }
+}
+]
