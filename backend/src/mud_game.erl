@@ -12,6 +12,7 @@
           ai_supervisor = undefined,
           online_players = [],
           locations = [],
+          starting_location = <<"">>,
           players = [],
           passwd = [],
           items = []
@@ -84,7 +85,7 @@ status() ->
 handle_call({new_character, Nick, Password, Sid}, _From, State) ->
     case validate_nick(Nick, State) of
         true ->
-            LocationID = mud:get_env(starting_location),
+            LocationID = State#state.starting_location,
             Location = prop(LocationID, State#state.locations),
             Character = new_character(Nick),
             Reply = [mk_store([{<<"nick">>, Nick},
@@ -355,7 +356,7 @@ handle_cast({npcize, Who, Strategy}, State) ->
                                        case prop(Nick, State#state.passwd, null) of
                                            null ->
                                                {Nick, [{<<"npc">>, Strategy},
-                                                       {<<"location">>, mud:get_env(starting_location)},
+                                                       {<<"location">>, State#state.starting_location},
                                                        {<<"password">>, mud:get_env(hive_api_key)}]};
 
                                            Vals ->
@@ -430,20 +431,20 @@ load_game_data() ->
     lager:notice("Loading MUD resources: ~p...", [Resources]),
     State = #state{
                locations = [],
-               passwd = load_passwords(filename:join([Resources, <<"passwd.json">>])),
-               players = load_players(filename:join([Resources, <<"players.json">>])),
-               items = load_items(filename:join([Resources, <<"items.json">>])),
+               passwd = load_passwords(filename:join([Resources, mud:get_env(passwords_file)])),
+               players = load_players(filename:join([Resources, mud:get_env(players_file)])),
+               items = load_items(filename:join([Resources, mud:get_env(items_file)])),
                online_players = []
               },
-    load_locations(filename:join([Resources, <<"locations.json">>]), State).
+    load_locations(filename:join([Resources, mud:get_env(locations_file)]), State).
 
 save_game_data(State) ->
     Resources = mud:get_env(resources),
     lager:notice("Saving MUD resources: ~p...", [Resources]),
-    save_locations(filename:join([Resources, <<"locations.json">>]), State#state.locations),
-    save_players(filename:join([Resources, <<"players.json">>]), State#state.players),
-    save_passwords(filename:join([Resources, <<"passwd.json">>]), State#state.passwd),
-    save_items(filename:join([Resources, <<"items.json">>]), State#state.items).
+    save_locations(filename:join([Resources, mud:get_env(locations_file)]), State#state.locations),
+    save_players(filename:join([Resources, mud:get_env(players_file)]), State#state.players),
+    save_passwords(filename:join([Resources, mud:get_env(passwords_file)]), State#state.passwd),
+    save_items(filename:join([Resources, mud:get_env(items_file)]), State#state.items).
 
 load_locations(File, State) ->
     lists:foldl(fun(Location, NewState) ->
@@ -474,7 +475,11 @@ load_locations(File, State) ->
                         NewestState#state{
                           locations = update(LocationID,
                                              update(<<"players">>, [], Location),
-                                             NewestState#state.locations)
+                                             NewestState#state.locations),
+                          starting_location = case NewestState#state.starting_location of
+                                                  <<"">>    -> LocationID;
+                                                  Otherwise -> Otherwise
+                                              end
                          }
                 end,
                 State,
@@ -484,7 +489,10 @@ load_players(File) ->
     lists:map(extractor(<<"nick">>), file_to_json(File)).
 
 load_passwords(File) ->
-    file_to_json(File).
+    case file_to_json(File) of
+        {error, _Error} -> [];
+        Otherwise       -> Otherwise
+    end.
 
 load_items(File) ->
     lists:map(extractor(<<"id">>), file_to_json(File)).

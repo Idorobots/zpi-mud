@@ -111,8 +111,8 @@ str_cat(A, B) ->
 %% Internal functions:
 api_call(Method, Path, Data) ->
     ApiUrl = mud:get_env(hive_url),
-    ApiPort = mud:get_env(hive_api_port),
-    ApiKey = mud:get_env(hive_api_key),
+    ApiPort = hive_config:get(<<"api.port">>),
+    ApiKey = hive_config:get(<<"api.hash">>),
     URL = str_join(<<"/">>, [str_join(<<":">>, [ApiUrl, integer_to_binary(ApiPort)]),
                              <<"api">>,
                              ApiKey,
