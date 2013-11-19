@@ -379,7 +379,7 @@ handle_cast({npcize, Who, Strategy}, State) ->
                                            null ->
                                                {Nick, [{<<"npc">>, Strategy},
                                                        {<<"location">>, State#state.starting_location},
-                                                       {<<"password">>, mud:get_env(hive_api_key)}]};
+                                                       {<<"password">>, hive_config:get(<<"api.hash">>)}]};
 
                                            Vals ->
                                                {Nick, update(<<"password">>,
@@ -478,7 +478,9 @@ load_locations(File, State) ->
                                                     null ->
                                                         S#state{
                                                           passwd = update(Nick,
-                                                                          [{<<"location">>, LocationID}],
+                                                                          [{<<"location">>, LocationID},
+                                                                           {<<"npc">>, <<"generic_npc">>},
+                                                                           {<<"password">>, hive_config:get(<<"api.hash">>)}],
                                                                           S#state.passwd)
                                                          };
 

@@ -11,7 +11,7 @@ build:
 	@$(REBAR) get-deps compile
 
 run:
-	@sh start-dev.sh $(RESOURCES)
+	@sh start.sh $(RESOURCES)
 
 clean:
 	@$(REBAR) clean
