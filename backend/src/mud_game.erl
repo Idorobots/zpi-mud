@@ -197,9 +197,19 @@ handle_call({exec_command, <<"move">>, Where, Sid, PlayerState}, _From, State) -
             {reply, {ok, mk_reply(<<"bad_action">>, [<<"You can't go there!">>])}, State};
 
         NewLocationID ->
-            Reply = [mk_store([{<<"location">>, NewLocationID}]),
-                     mk_reply(<<"location_info">>, [prop(NewLocationID, State#state.locations)])],
-            {reply, {ok, Reply}, join(Nick, Sid, NewLocationID, leave(Nick, Sid, LocationID, State))}
+            case prop(NewLocationID, State#state.locations) of
+                null ->
+                    {reply, {ok, mk_reply(<<"bad_action">>, [<<"The road is blocked!">>])}, State};
+
+                _Location ->
+                    Reply = [mk_store([{<<"location">>, NewLocationID}]),
+                             mk_reply(<<"location_info">>,
+                                      [prop(NewLocationID, State#state.locations)])],
+                    {reply, {ok, Reply}, join(Nick,
+                                              Sid,
+                                              NewLocationID,
+                                              leave(Nick, Sid, LocationID, State))}
+            end
     end;
 
 handle_call({exec_command, <<"take">>, ID, _Sid, PlayerState}, _From, State) ->
@@ -481,7 +491,10 @@ load_locations(File, State) ->
                                                                           [{<<"location">>, LocationID},
                                                                            {<<"npc">>, <<"generic_npc">>},
                                                                            {<<"password">>, hive_config:get(<<"api.hash">>)}],
-                                                                          S#state.passwd)
+                                                                          S#state.passwd),
+                                                          players = update(Nick,
+                                                                           new_character(Nick),
+                                                                           S#state.players)
                                                          };
 
                                                     Passwd ->
